@@ -419,8 +419,11 @@ void OpenGLDisplay::loop( void )
 {
   state.window_setup();
   XMapRaised( state.display, state.window );
+
+  /*
   XEvent event;
   XNextEvent( state.display, &event );
+  */
 
   init_context();
   state.reset_viewport();

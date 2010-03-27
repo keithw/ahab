@@ -59,8 +59,8 @@ ES::ES( File *s_file, void (*progress)( off_t size, off_t location ) )
       hdr->link();
   }
 
-  pool = new BufferPool( pool_slots, 16 * seq->get_mb_width(),
-			 16 * seq->get_mb_height() );
+  pool = new BufferPool( pool_slots, seq->get_mb_width(),
+			 seq->get_mb_height() );
 
   /* Figure out the display order of each picture and link each
      from the coded_picture and displayed_picture arrays */

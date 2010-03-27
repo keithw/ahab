@@ -8,6 +8,7 @@
 #include "bitreader.hpp"
 #include "exceptions.hpp"
 #include "file.hpp"
+#include "mutexobj.hpp"
 
 #include "libmpeg2.h"
 
@@ -168,8 +169,18 @@ public:
 };
 
 enum PictureType { I = 1, P, B };
+enum DecodeDirection { TOPDOWN, BOTTOMUP };
 
+class Frame;
 class FrameHandle;
+
+struct picture_decoder_call_struct
+{
+  Picture *me;
+  DecodeDirection direction;
+  mpeg2_decoder_t decoder;
+  Frame *cur, *fwd, *back;
+};
 
 class Picture : public MPEGHeader
 {
@@ -194,7 +205,7 @@ private:
   uint8_t *intra_quantiser_matrix,
     *non_intra_quantiser_matrix;
 
-  Slice **slicerow;
+  Slice **first_slice_in_row;
 
   Picture *forward_reference, *backward_reference;
 
@@ -206,6 +217,9 @@ private:
   static void motion_setup( mpeg2_decoder_t *d );
 
   FrameHandle *fh;
+
+  pthread_mutex_t decoding_mutex;
+  bool decoding;
 
 public:
   int get_coded( void ) { return coded_order; }
@@ -271,7 +285,10 @@ public:
   Picture *get_forward( void ) { return forward_reference; }
   Picture *get_backward( void ) { return backward_reference; }
 
-  Slice *get_slicerow( uint row ) { return slicerow[ row ]; }
+  Slice *get_first_slice_in_row( uint row ) { return first_slice_in_row[ row ]; }
+
+  int get_f_code_fv( void ) { return get_extension()->f_code_fv; }
+  int get_f_code_bv( void ) { return get_extension()->f_code_bv; }
 
   FrameHandle *get_framehandle( void ) { return fh; }
 
@@ -284,6 +301,10 @@ public:
   virtual void link( void );
 
   void lock_and_decodeall();
+  void start_parallel_decode( bool leave_locked );
+
+  void parallel_decode_internal( bool leave_locked );
+  void decoder_internal( picture_decoder_call_struct *args );
 };
 
 class SequenceEnd : public MPEGHeader

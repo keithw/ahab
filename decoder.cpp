@@ -33,7 +33,8 @@ Decoder::~Decoder() {}
 void Decoder::decode_and_display( void )
 {
   Picture *pic = stream->get_picture_displayed( state.current_picture );
-  pic->lock_and_decodeall();
+  pic->start_parallel_decode( true );
+  pic->get_framehandle()->wait_rendered();
   DrawAndUnlockFrame *op = new DrawAndUnlockFrame( pic->get_framehandle() );
   state.oglq->flush_type( op );
   state.oglq->enqueue( op );  
@@ -54,6 +55,16 @@ void Decoder::loop( void )
 
     if ( state.current_picture != picture_displayed ) {
       decode_and_display();
+
+      /* Also decode a window around current location
+      for ( int i = state.current_picture - 4;
+	    i < state.current_picture + 4;
+	    i++ ) {
+	if ( i >= 0 && i < stream->get_num_pictures() && i != state.current_picture ) {
+	  stream->get_picture_displayed( i )->start_parallel_decode( false );
+	}
+      }
+      */
     }
 
     picture_displayed = state.current_picture;

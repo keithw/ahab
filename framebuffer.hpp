@@ -3,6 +3,7 @@
 
 #include "mpegheader.hpp"
 #include "exceptions.hpp"
+#include "slicerow.hpp"
 
 #include <stdint.h>
 #include <pthread.h>
@@ -21,6 +22,7 @@ private:
   int locks;
 
   pthread_mutex_t mutex;
+  pthread_cond_t activity;
 
   void set_frame( Frame *s_frame );
 
@@ -28,11 +30,13 @@ public:
   void increment_lockcount( void );
   void decrement_lockcount( void );
 
-  Frame *get_frame( void ) { return frame; }
+  Frame *get_frame( void ) { ahabassert( frame ); return frame; }
   Picture *get_picture( void ) { return pic; }
 
   FrameHandle( BufferPool *s_pool, Picture *s_pic );
-  ~FrameHandle() { unixassert( pthread_mutex_destroy( &mutex ) ); }
+  ~FrameHandle();
+
+  void wait_rendered( void );
 };
 
 class FrameQueue
@@ -62,7 +66,7 @@ private:
   pthread_mutex_t mutex;
 
 public:
-  BufferPool( uint s_num_frames, uint s_width, uint s_height );
+  BufferPool( uint s_num_frames, uint mb_width, uint mb_height );
   ~BufferPool();
 
   FrameHandle *make_handle( Picture *pic ) { return new FrameHandle( this, pic ); }
@@ -88,9 +92,12 @@ private:
   Frame *prev, *next;
 
   pthread_mutex_t mutex;
+  pthread_cond_t activity;
+
+  SliceRow **slicerow;
 
 public:
-  Frame( uint s_width, uint s_height );
+  Frame( uint mb_width, uint mb_height );
   ~Frame();
 
   uint8_t *get_buf( void ) { return buf; }
@@ -98,7 +105,9 @@ public:
   uint8_t *get_cb( void ) { return buf + width * height; }
   uint8_t *get_cr( void ) { return buf + width * height + width * height / 4; }
 
-  void lock( FrameHandle *s_handle );
+  void lock( FrameHandle *s_handle,
+	     int f_code_fv, int f_code_bv,
+	     Picture *forward, Picture *backward );
   void set_rendered( void );
   void set_freeable( void );
   void relock( void );
@@ -106,6 +115,10 @@ public:
   void free_locked( void );
 
   FrameState get_state( void ) { return state; }
+
+  void wait_rendered( void );
+
+  SliceRow *get_slicerow( uint row ) { return slicerow[ row ]; }
 };
 
 #endif

@@ -18,6 +18,7 @@ Controller::Controller( uint s_num_frames )
     opq( 0 ),
     num_frames( s_num_frames )
 {
+  unixassert( pthread_mutex_init( &mutex, NULL ) );
   pthread_create( &thread_handle, NULL, thread_helper, this );
 }
 
@@ -90,4 +91,5 @@ Controller::~Controller()
     }
   }
   unixassert( pthread_join( thread_handle, NULL ) );
+  unixassert( pthread_mutex_destroy( &mutex ) );
 }

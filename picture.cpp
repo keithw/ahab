@@ -2,11 +2,15 @@
 #include <typeinfo>
 #include <stdio.h>
 #include <stdint.h>
+#include <unistd.h>
 
 #include "libmpeg2.h"
 
 #include "mpegheader.hpp"
 #include "framebuffer.hpp"
+#include "exceptions.hpp"
+#include "detachattr.hpp"
+#include "mutexobj.hpp"
 
 extern const uint8_t mpeg2_scan_norm[ 64 ]; /* These are the MMX versions */
 extern const uint8_t mpeg2_scan_alt[ 64 ];
@@ -15,7 +19,7 @@ Picture::Picture( BitReader &hdr ) {
   init();
   sequence = NULL;
   extension = NULL;
-  slicerow = NULL;
+  first_slice_in_row = NULL;
   coded_order = display_order = -1;
   set_unclean( false );
   set_broken( false );
@@ -23,6 +27,10 @@ Picture::Picture( BitReader &hdr ) {
   incomplete = false;
   forward_reference = backward_reference = NULL;
   fh = NULL;
+  decoding = false;
+  invalid = false;
+
+  unixassert( pthread_mutex_init( &decoding_mutex, NULL ) );
 
   hdr.reset();
   ahabassert( hdr.readbits( 32 ) == 0x00000100 );
@@ -41,12 +49,14 @@ Picture::Picture( BitReader &hdr ) {
 
 Picture::~Picture()
 {
-  if ( slicerow ) {
-    delete[] slicerow;
+  if ( first_slice_in_row ) {
+    delete[] first_slice_in_row;
   }
   if ( fh ) {
     delete fh;
   }
+
+  unixassert( pthread_mutex_destroy( &decoding_mutex ) );
 }
 
 static const int non_linear_scale [] = {
@@ -69,15 +79,15 @@ void Picture::link( void )
   }
   extension = pe;
 
-  /* Allocate space for slicerows */
+  /* Allocate space for first_slice_in_rows */
   uint mb_height = get_sequence()->get_mb_height();
-  slicerow = new Slice *[ mb_height ];
+  first_slice_in_row = new Slice *[ mb_height ];
 
   for ( uint i = 0; i < mb_height; i++ ) {
-    slicerow[ i ] = NULL;
+    first_slice_in_row[ i ] = NULL;
   }
 
-  /* Collect all the slicerows */
+  /* Collect all the first_slice_in_rows */
   MPEGHeader *hdr = extension;
   while ( hdr && ( typeid( *hdr ) != typeid( Picture ) ) ) {
     if ( typeid( *hdr ) == typeid( Slice ) ) {
@@ -86,8 +96,8 @@ void Picture::link( void )
       uint val = ts->get_val();
       mpegassert( (val > 0) && (val <= mb_height) );
       int loc = val - 1;
-      if ( slicerow[ loc ] == NULL ) {
-	slicerow[ loc ] = ts;
+      if ( first_slice_in_row[ loc ] == NULL ) {
+	first_slice_in_row[ loc ] = ts;
       }
     }
 
@@ -95,7 +105,7 @@ void Picture::link( void )
   }
 
   for ( uint i = 0; i < mb_height; i++ ) {
-    if ( slicerow[ i ] == NULL ) {
+    if ( first_slice_in_row[ i ] == NULL ) {
       incomplete = true;
       break;
     }
@@ -245,7 +255,222 @@ void Picture::setup_decoder( mpeg2_decoder_t *d, uint8_t *current_fbuf[3],
   motion_setup( d );
 }
 
-void debug( void ) {}
+struct parallel_decode_call_struct
+{
+  Picture *me;
+  bool leave_locked;
+};
+
+static void *parallel_decode_helper( void *call_struct_opaque )
+{
+  struct parallel_decode_call_struct *x = (parallel_decode_call_struct *)call_struct_opaque;
+  struct parallel_decode_call_struct y = *x;
+  delete x;
+  y.me->parallel_decode_internal( y.leave_locked );
+  return NULL;
+}
+
+static void *decoder_helper( void *call_struct_opaque )
+{
+  struct picture_decoder_call_struct *x = (picture_decoder_call_struct *) call_struct_opaque;
+  x->me->decoder_internal( x );
+  return NULL;
+}
+
+void Picture::start_parallel_decode( bool leave_locked )
+{
+  /* First, see if the picture is already rendered */
+  fh->increment_lockcount();
+
+  if ( fh->get_frame()
+       && fh->get_frame()->get_state() == RENDERED ) {
+    if ( !leave_locked ) {
+      fh->decrement_lockcount();
+    }
+    return;
+  }
+
+  /* If already in progress, let first thread handle. Otherwise mark our turf. */
+  {
+    MutexLock x( &decoding_mutex );
+    if ( decoding ) {
+      if ( !leave_locked ) {
+	fh->decrement_lockcount();
+      }
+      return;
+    } else {
+      decoding = true;
+    }
+  }
+
+  /* Ok, we have to render it. Temporarily unlock us to free up space */
+  fh->decrement_lockcount();
+
+  /* Lock and start decoding pre-requisites */
+  if ( forward_reference ) {
+    forward_reference->start_parallel_decode( true );
+  }
+
+  if ( backward_reference ) {
+    backward_reference->start_parallel_decode( true );
+  }
+
+  /* Lock myself */
+  fh->increment_lockcount();
+
+  /* Fork off a thread and return. */
+  pthread_t decode_thread;
+
+  struct parallel_decode_call_struct *call_struct = new parallel_decode_call_struct;
+
+  call_struct->me = this;
+  call_struct->leave_locked = leave_locked;
+
+  unixassert( pthread_create( &decode_thread,
+			      &DetachedThread.attr,
+			      parallel_decode_helper, call_struct ) );
+}
+
+void Picture::parallel_decode_internal( bool leave_locked ) {
+  Frame *cur, *fwd, *back;
+
+  cur = fwd = back = fh->get_frame();
+
+  if ( forward_reference ) fwd = forward_reference->get_framehandle()->get_frame();
+  if ( backward_reference ) back = backward_reference->get_framehandle()->get_frame();
+
+  uint8_t *curf[3] = { cur->get_y(), cur->get_cb(), cur->get_cr() };
+  uint8_t *fwdf[3] = { fwd->get_y(), fwd->get_cb(), fwd->get_cr() };
+  uint8_t *backf[3] = { back->get_y(), back->get_cb(), back->get_cr() };
+
+  uint height = 16 * get_sequence()->get_mb_height();
+  uint width = 16 * get_sequence()->get_mb_width();
+
+  if ( problem() ) {
+    memset( curf[0], 128, 3 * height * width / 2 );
+  }
+
+  mpeg2_decoder_t d;
+  setup_decoder( &d, curf, fwdf, backf );
+
+  pthread_t topdown_thread, bottomup_thread;
+
+  picture_decoder_call_struct topdown_struct, bottomup_struct;
+
+  topdown_struct.me = bottomup_struct.me = this;
+  topdown_struct.decoder = bottomup_struct.decoder = d;
+
+  topdown_struct.cur = bottomup_struct.cur = cur;
+  topdown_struct.fwd = bottomup_struct.fwd = fwd;
+  topdown_struct.back = bottomup_struct.back = back;
+
+  topdown_struct.direction = TOPDOWN;
+  bottomup_struct.direction = BOTTOMUP;
+
+  unixassert( pthread_create( &topdown_thread,
+			      NULL,
+			      decoder_helper, &topdown_struct ) );
+
+  unixassert( pthread_create( &bottomup_thread,
+			      NULL,
+			      decoder_helper, &bottomup_struct ) );
+
+  unixassert( pthread_join( bottomup_thread, NULL ) );
+  unixassert( pthread_join( topdown_thread, NULL ) );
+
+  fh->get_frame()->set_rendered();
+
+  if ( !leave_locked ) {
+    fh->decrement_lockcount();
+  }
+
+  {
+    MutexLock x( &decoding_mutex );
+    ahabassert( decoding );
+    decoding = false;
+  }
+
+  if ( forward_reference ) {
+    forward_reference->get_framehandle()->wait_rendered();
+    forward_reference->get_framehandle()->decrement_lockcount();  
+  }
+  if ( backward_reference ) {
+    backward_reference->get_framehandle()->wait_rendered();
+    backward_reference->get_framehandle()->decrement_lockcount();
+  }
+}
+
+void Picture::decoder_internal( picture_decoder_call_struct *args )
+{
+  int rows = get_sequence()->get_mb_height();
+
+  int starting_row, increment;
+
+  if ( args->direction == TOPDOWN ) {
+    starting_row = 0;
+    increment = 1;
+  } else {
+    starting_row = rows - 1;
+    increment = -1;
+  }
+
+  int row = starting_row;
+  while ( 0 <= row && row < rows ) {
+    //    fprintf( stderr, "DECODER %d starting row %d\n", display_order, row );
+    SliceRow *sr = args->cur->get_slicerow( row );
+    if ( !sr->lock() ) {
+      //      fprintf( stderr, "DECODER found row %d already taken, quitting.\n", row );
+      break;
+    }
+
+    if ( forward_reference ) {
+      int fw_bot = sr->get_forward_lowrow();
+      int fw_top = sr->get_forward_highrow();
+
+      if ( fw_bot != -1 ) {
+	for ( int depend_row = fw_top; depend_row <= fw_bot; depend_row++ ) {
+	  args->fwd->get_slicerow( depend_row )->wait_rendered();
+	}
+      }
+    }
+
+    if ( backward_reference ) {
+      int back_bot = sr->get_backward_lowrow();
+      int back_top = sr->get_backward_highrow();
+      
+      if ( back_bot != -1 ) {
+	for ( int depend_row = back_top; depend_row <= back_bot; depend_row++ ) {
+	  args->back->get_slicerow( depend_row )->wait_rendered();
+	}
+      }
+    }
+
+    Slice *s = get_first_slice_in_row( row );
+    while ( s != NULL ) {
+      MapHandle *chunk = s->map_chunk();
+
+      args->decoder.bitstream_buf = 0;
+      args->decoder.bitstream_bits = 0;
+      args->decoder.bitstream_ptr = chunk->get_buf() + 4;
+      args->decoder.bit_ptr_end = chunk->get_buf() + chunk->get_len();
+
+      s->decode( &args->decoder, s->get_val(), chunk->get_buf() + 4 );
+
+      if ( args->decoder.invalid ) {
+	invalid = true; /* should be protected by mutex */
+	args->decoder.invalid = false;
+      }
+
+      delete chunk;
+
+      s = s->get_next_in_row();
+    }
+
+    sr->set_rendered();
+    row += increment;
+    //    usleep( 100000 );
+  }
+}
 
 void Picture::lock_and_decodeall( void )
 {
@@ -296,7 +521,7 @@ void Picture::lock_and_decodeall( void )
   setup_decoder( &d, curf, fwdf, backf );
 
   for ( uint row = 0; row < rows; row++ ) {
-    Slice *s = get_slicerow( row );
+    Slice *s = get_first_slice_in_row( row );
     while ( s != NULL ) {
       MapHandle *chunk = s->map_chunk();
 
@@ -330,4 +555,3 @@ void Picture::init_fh( BufferPool *pool )
 {
   fh = pool->make_handle( this );
 }
-

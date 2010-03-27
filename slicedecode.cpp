@@ -438,8 +438,8 @@ static void get_intra_block_B14 (mpeg2_decoder_t * const decoder,
 		goto normal_code;
 	} else {
 	    tab = DCT_16 + UBITS (bit_buf, 16);
-	    bit_buf <<= 16;
-	    GETWORD (bit_buf, bits + 16, bit_ptr);
+	    DUMPBITS(bit_buf, bits, 16 );
+	    NEEDBITS (bit_buf, bits, bit_ptr, decoder->bit_ptr_end );
 	    i += tab->run;
 	    if (i < 64)
 		goto normal_code;
@@ -556,8 +556,8 @@ static void get_intra_block_B15 (mpeg2_decoder_t * const decoder,
 		goto normal_code;
 	} else {
 	    tab = DCT_16 + UBITS (bit_buf, 16);
-	    bit_buf <<= 16;
-	    GETWORD (bit_buf, bits + 16, bit_ptr);
+	    DUMPBITS(bit_buf, bits, 16 );
+	    NEEDBITS (bit_buf, bits, bit_ptr, decoder->bit_ptr_end );
 	    i += tab->run;
 	    if (i < 64)
 		goto normal_code;
@@ -684,8 +684,9 @@ static int get_non_intra_block (mpeg2_decoder_t * const decoder,
 		goto normal_code;
 	} else {
 	    tab = DCT_16 + UBITS (bit_buf, 16);
-	    bit_buf <<= 16;
-	    GETWORD (bit_buf, bits + 16, bit_ptr);
+
+	    DUMPBITS(bit_buf, bits, 16 );
+	    NEEDBITS (bit_buf, bits, bit_ptr, decoder->bit_ptr_end );
 	    i += tab->run;
 	    if (i < 64)
 		goto normal_code;
@@ -808,8 +809,10 @@ static void get_mpeg1_intra_block (mpeg2_decoder_t * const decoder)
 		goto normal_code;
 	} else {
 	    tab = DCT_16 + UBITS (bit_buf, 16);
-	    bit_buf <<= 16;
-	    GETWORD (bit_buf, bits + 16, bit_ptr);
+
+	    DUMPBITS(bit_buf, bits, 16 );
+	    NEEDBITS (bit_buf, bits, bit_ptr, decoder->bit_ptr_end );
+
 	    i += tab->run;
 	    if (i < 64)
 		goto normal_code;
@@ -938,8 +941,10 @@ static int get_mpeg1_non_intra_block (mpeg2_decoder_t * const decoder)
 		goto normal_code;
 	} else {
 	    tab = DCT_16 + UBITS (bit_buf, 16);
-	    bit_buf <<= 16;
-	    GETWORD (bit_buf, bits + 16, bit_ptr);
+
+	    DUMPBITS(bit_buf, bits, 16 );
+	    NEEDBITS (bit_buf, bits, bit_ptr, decoder->bit_ptr_end );
+
 	    i += tab->run;
 	    if (i < 64)
 		goto normal_code;

@@ -415,6 +415,29 @@ void Picture::decoder_internal( picture_decoder_call_struct *args )
   }
 
   int row = starting_row;
+  SliceRow *first_sr = args->cur->get_slicerow( row );
+  if ( forward_reference ) {
+    int fw_bot = first_sr->get_forward_lowrow();
+    int fw_top = first_sr->get_forward_highrow();
+
+    if ( fw_bot != -1 ) {
+      for ( int depend_row = fw_top; depend_row <= fw_bot; depend_row++ ) {
+	args->fwd->get_slicerow( depend_row )->wait_rendered();
+      }
+    }
+  }
+
+  if ( backward_reference ) {
+    int back_bot = first_sr->get_backward_lowrow();
+    int back_top = first_sr->get_backward_highrow();
+
+    if ( back_bot != -1 ) {
+      for ( int depend_row = back_top; depend_row <= back_bot; depend_row++ ) {
+	args->back->get_slicerow( depend_row )->wait_rendered();
+      }
+    }
+  }
+
   while ( 0 <= row && row < rows ) {
     //    fprintf( stderr, "DECODER %d starting row %d\n", display_order, row );
     SliceRow *sr = args->cur->get_slicerow( row );
@@ -424,24 +447,28 @@ void Picture::decoder_internal( picture_decoder_call_struct *args )
     }
 
     if ( forward_reference ) {
-      int fw_bot = sr->get_forward_lowrow();
-      int fw_top = sr->get_forward_highrow();
+      int depend_row;
+      if ( args->direction == TOPDOWN ) {
+	depend_row = sr->get_forward_lowrow();
+      } else {
+	depend_row = sr->get_forward_highrow();
+      }
 
-      if ( fw_bot != -1 ) {
-	for ( int depend_row = fw_top; depend_row <= fw_bot; depend_row++ ) {
-	  args->fwd->get_slicerow( depend_row )->wait_rendered();
-	}
+      if ( depend_row != -1 ) {
+	args->fwd->get_slicerow( depend_row )->wait_rendered();
       }
     }
 
     if ( backward_reference ) {
-      int back_bot = sr->get_backward_lowrow();
-      int back_top = sr->get_backward_highrow();
-      
-      if ( back_bot != -1 ) {
-	for ( int depend_row = back_top; depend_row <= back_bot; depend_row++ ) {
-	  args->back->get_slicerow( depend_row )->wait_rendered();
-	}
+      int depend_row;
+      if ( args->direction == TOPDOWN ) {
+	depend_row = sr->get_backward_lowrow();
+      } else {
+	depend_row = sr->get_backward_highrow();
+      }
+
+      if ( depend_row != -1 ) {
+	args->back->get_slicerow( depend_row )->wait_rendered();
       }
     }
 

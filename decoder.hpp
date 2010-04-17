@@ -10,6 +10,7 @@ class DecoderOperation;
 class DisplayOperation;
 
 #include "opq.hpp"
+#include "decodeengine.hpp"
 
 class DecoderState {
 public:
@@ -25,6 +26,7 @@ private:
   DecoderState state;
   OperationQueue<DecoderOperation> opq;
   pthread_t thread_handle;
+  DecodeEngine engine;
 
   ES *stream;
 

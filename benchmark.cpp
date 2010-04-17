@@ -9,6 +9,8 @@
 #include "mpegheader.hpp"
 #include "exceptions.hpp"
 #include "framebuffer.hpp"
+#include "picture.hpp"
+#include "decodeengine.hpp"
 
 void progress_bar( off_t size, off_t location ) {}
 
@@ -23,6 +25,7 @@ int main( int argc, char *argv[] )
 
   File *file = new File( argv[ 1 ] );
   ES *stream = new ES( file, &progress_bar );
+  DecodeEngine engine;
   int num_pictures = stream->get_num_pictures();
 
   struct timespec start, finish;
@@ -33,7 +36,7 @@ int main( int argc, char *argv[] )
 
   for ( int i = 0; i < num_pictures; i++ ) {
     if ( parallel ) {
-      stream->get_picture_displayed( i )->start_parallel_decode( true );
+      stream->get_picture_displayed( i )->start_parallel_decode( &engine, true );
       stream->get_picture_displayed( i )->get_framehandle()->wait_rendered();
     } else {
       stream->get_picture_displayed( i )->lock_and_decodeall();

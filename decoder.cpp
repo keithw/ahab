@@ -6,6 +6,7 @@
 #include "mpegheader.hpp"
 #include "displayop.hpp"
 #include "decoderop.hpp"
+#include "picture.hpp"
 
 static void *thread_helper( void *decoder )
 {
@@ -33,7 +34,7 @@ Decoder::~Decoder() {}
 void Decoder::decode_and_display( void )
 {
   Picture *pic = stream->get_picture_displayed( state.current_picture );
-  pic->start_parallel_decode( true );
+  pic->start_parallel_decode( &engine, true );
   pic->get_framehandle()->wait_rendered();
   DrawAndUnlockFrame *op = new DrawAndUnlockFrame( pic->get_framehandle() );
   state.oglq->flush_type( op );

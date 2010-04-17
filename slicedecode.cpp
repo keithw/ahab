@@ -31,6 +31,7 @@
 #include "mpeg2_internal.h"
 
 #include "mpegheader.hpp"
+#include "picture.hpp"
 
 #include <stdio.h>
 

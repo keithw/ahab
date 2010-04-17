@@ -5,6 +5,7 @@
 #include "exceptions.hpp"
 #include "bitreader.hpp"
 #include "file.hpp"
+#include "picture.hpp"
 
 MPEGHeader *MPEGHeader::make( BitReader &hdr, File *file )
 {

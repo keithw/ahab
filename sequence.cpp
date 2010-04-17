@@ -2,6 +2,7 @@
 
 #include "mpegheader.hpp"
 #include "mpegtables.hpp"
+#include "picture.hpp"
 
 Sequence::Sequence( BitReader &hdr )
 {

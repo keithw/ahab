@@ -12,6 +12,7 @@
 #include "exceptions.hpp"
 #include "bitreader.hpp"
 #include "framebuffer.hpp"
+#include "picture.hpp"
 
 const uint pool_slots = 50;
 

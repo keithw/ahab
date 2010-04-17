@@ -3,14 +3,23 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <unistd.h>
+#include <malloc.h>
 
 #include "libmpeg2.h"
+
+#include "decoderjob.hpp"
+#include "decodeengine.hpp"
+
+#include "picture.hpp"
 
 #include "mpegheader.hpp"
 #include "framebuffer.hpp"
 #include "exceptions.hpp"
-#include "detachattr.hpp"
 #include "mutexobj.hpp"
+
+#include <unistd.h>
+#include <sys/syscall.h>
+#include <sys/types.h>
 
 extern const uint8_t mpeg2_scan_norm[ 64 ]; /* These are the MMX versions */
 extern const uint8_t mpeg2_scan_alt[ 64 ];
@@ -27,10 +36,11 @@ Picture::Picture( BitReader &hdr ) {
   incomplete = false;
   forward_reference = backward_reference = NULL;
   fh = NULL;
-  decoding = false;
+  decoding = 0;
   invalid = false;
 
   unixassert( pthread_mutex_init( &decoding_mutex, NULL ) );
+  unixassert( pthread_cond_init( &decoding_activity, NULL ) );
 
   hdr.reset();
   ahabassert( hdr.readbits( 32 ) == 0x00000100 );
@@ -56,6 +66,7 @@ Picture::~Picture()
     delete fh;
   }
 
+  unixassert( pthread_cond_destroy( &decoding_activity ) );
   unixassert( pthread_mutex_destroy( &decoding_mutex ) );
 }
 
@@ -255,29 +266,7 @@ void Picture::setup_decoder( mpeg2_decoder_t *d, uint8_t *current_fbuf[3],
   motion_setup( d );
 }
 
-struct parallel_decode_call_struct
-{
-  Picture *me;
-  bool leave_locked;
-};
-
-static void *parallel_decode_helper( void *call_struct_opaque )
-{
-  struct parallel_decode_call_struct *x = (parallel_decode_call_struct *)call_struct_opaque;
-  struct parallel_decode_call_struct y = *x;
-  delete x;
-  y.me->parallel_decode_internal( y.leave_locked );
-  return NULL;
-}
-
-static void *decoder_helper( void *call_struct_opaque )
-{
-  struct picture_decoder_call_struct *x = (picture_decoder_call_struct *) call_struct_opaque;
-  x->me->decoder_internal( x );
-  return NULL;
-}
-
-void Picture::start_parallel_decode( bool leave_locked )
+void Picture::start_parallel_decode( DecodeEngine *engine, bool leave_locked )
 {
   /* First, see if the picture is already rendered */
   fh->increment_lockcount();
@@ -293,13 +282,13 @@ void Picture::start_parallel_decode( bool leave_locked )
   /* If already in progress, let first thread handle. Otherwise mark our turf. */
   {
     MutexLock x( &decoding_mutex );
-    if ( decoding ) {
+    if ( decoding > 0 ) {
       if ( !leave_locked ) {
 	fh->decrement_lockcount();
       }
       return;
     } else {
-      decoding = true;
+      decoding++;
     }
   }
 
@@ -308,30 +297,16 @@ void Picture::start_parallel_decode( bool leave_locked )
 
   /* Lock and start decoding pre-requisites */
   if ( forward_reference ) {
-    forward_reference->start_parallel_decode( true );
+    forward_reference->start_parallel_decode( engine, true );
   }
 
   if ( backward_reference ) {
-    backward_reference->start_parallel_decode( true );
+    backward_reference->start_parallel_decode( engine, true );
   }
 
   /* Lock myself */
   fh->increment_lockcount();
 
-  /* Fork off a thread and return. */
-  pthread_t decode_thread;
-
-  struct parallel_decode_call_struct *call_struct = new parallel_decode_call_struct;
-
-  call_struct->me = this;
-  call_struct->leave_locked = leave_locked;
-
-  unixassert( pthread_create( &decode_thread,
-			      &DetachedThread.attr,
-			      parallel_decode_helper, call_struct ) );
-}
-
-void Picture::parallel_decode_internal( bool leave_locked ) {
   Frame *cur, *fwd, *back;
 
   cur = fwd = back = fh->get_frame();
@@ -350,44 +325,42 @@ void Picture::parallel_decode_internal( bool leave_locked ) {
     memset( curf[0], 128, 3 * height * width / 2 );
   }
 
-  mpeg2_decoder_t d;
-  setup_decoder( &d, curf, fwdf, backf );
+  mpeg2_decoder_t *topdown_d, *bottomup_d;
+  unixassert( posix_memalign( (void **)&topdown_d, 64, sizeof( mpeg2_decoder_t ) ) );
+  unixassert( posix_memalign( (void **)&bottomup_d, 64, sizeof( mpeg2_decoder_t ) ) );
 
-  pthread_t topdown_thread, bottomup_thread;
+  setup_decoder( topdown_d, curf, fwdf, backf );
+  setup_decoder( bottomup_d, curf, fwdf, backf );
 
-  picture_decoder_call_struct topdown_struct, bottomup_struct;
-
-  topdown_struct.me = bottomup_struct.me = this;
-  topdown_struct.decoder = bottomup_struct.decoder = d;
-
-  topdown_struct.cur = bottomup_struct.cur = cur;
-  topdown_struct.fwd = bottomup_struct.fwd = fwd;
-  topdown_struct.back = bottomup_struct.back = back;
-
-  topdown_struct.direction = TOPDOWN;
-  bottomup_struct.direction = BOTTOMUP;
-
-  unixassert( pthread_create( &topdown_thread,
-			      NULL,
-			      decoder_helper, &topdown_struct ) );
-
-  unixassert( pthread_create( &bottomup_thread,
-			      NULL,
-			      decoder_helper, &bottomup_struct ) );
-
-  unixassert( pthread_join( bottomup_thread, NULL ) );
-  unixassert( pthread_join( topdown_thread, NULL ) );
-
-  fh->get_frame()->set_rendered();
-
-  if ( !leave_locked ) {
-    fh->decrement_lockcount();
-  }
+  DecodeSlices *topdown = new DecodeSlices( this, TOPDOWN, topdown_d, cur, fwd, back );
+  DecodeSlices *bottomup = new DecodeSlices( this, BOTTOMUP, bottomup_d, cur, fwd, back );
+  Cleanup *cleanup = new Cleanup( this, leave_locked );
 
   {
     MutexLock x( &decoding_mutex );
-    ahabassert( decoding );
-    decoding = false;
+    decoding += 2;
+  }
+
+  engine->dispatch( topdown );
+  engine->dispatch( bottomup );
+
+  engine->dispatch( cleanup );
+}
+
+void Picture::decoder_cleanup_internal( bool leave_locked )
+{
+  {
+    MutexLock x( &decoding_mutex );
+    ahabassert( decoding > 0 );
+    while ( decoding != 1 ) {
+      unixassert( pthread_cond_wait( &decoding_activity, &decoding_mutex ) );
+    }
+    fh->get_frame()->set_rendered();
+    decoding = 0;
+  }
+
+  if ( !leave_locked ) {
+    fh->decrement_lockcount();
   }
 
   if ( forward_reference ) {
@@ -400,13 +373,13 @@ void Picture::parallel_decode_internal( bool leave_locked ) {
   }
 }
 
-void Picture::decoder_internal( picture_decoder_call_struct *args )
+void Picture::decoder_internal( DecodeSlices *job )
 {
   int rows = get_sequence()->get_mb_height();
 
   int starting_row, increment;
 
-  if ( args->direction == TOPDOWN ) {
+  if ( job->direction == TOPDOWN ) {
     starting_row = 0;
     increment = 1;
   } else {
@@ -415,60 +388,32 @@ void Picture::decoder_internal( picture_decoder_call_struct *args )
   }
 
   int row = starting_row;
-  SliceRow *first_sr = args->cur->get_slicerow( row );
-  if ( forward_reference ) {
-    int fw_bot = first_sr->get_forward_lowrow();
-    int fw_top = first_sr->get_forward_highrow();
-
-    if ( fw_bot != -1 ) {
-      for ( int depend_row = fw_top; depend_row <= fw_bot; depend_row++ ) {
-	args->fwd->get_slicerow( depend_row )->wait_rendered();
-      }
-    }
-  }
-
-  if ( backward_reference ) {
-    int back_bot = first_sr->get_backward_lowrow();
-    int back_top = first_sr->get_backward_highrow();
-
-    if ( back_bot != -1 ) {
-      for ( int depend_row = back_top; depend_row <= back_bot; depend_row++ ) {
-	args->back->get_slicerow( depend_row )->wait_rendered();
-      }
-    }
-  }
-
   while ( 0 <= row && row < rows ) {
-    //    fprintf( stderr, "DECODER %d starting row %d\n", display_order, row );
-    SliceRow *sr = args->cur->get_slicerow( row );
-    if ( !sr->lock() ) {
-      //      fprintf( stderr, "DECODER found row %d already taken, quitting.\n", row );
+    SliceRow *sr = job->cur->get_slicerow( row );
+    SliceRowState previous_state = sr->lock();
+    if ( (previous_state == SR_LOCKED) || (previous_state == SR_RENDERED) ) {
       break;
     }
 
     if ( forward_reference ) {
-      int depend_row;
-      if ( args->direction == TOPDOWN ) {
-	depend_row = sr->get_forward_lowrow();
-      } else {
-	depend_row = sr->get_forward_highrow();
-      }
+      int fw_bot = sr->get_forward_lowrow();
+      int fw_top = sr->get_forward_highrow();
 
-      if ( depend_row != -1 ) {
-	args->fwd->get_slicerow( depend_row )->wait_rendered();
+      if ( fw_bot != -1 ) {
+	for ( int depend_row = fw_top; depend_row <= fw_bot; depend_row++ ) {
+	  job->fwd->get_slicerow( depend_row )->wait_rendered();
+	}
       }
     }
 
     if ( backward_reference ) {
-      int depend_row;
-      if ( args->direction == TOPDOWN ) {
-	depend_row = sr->get_backward_lowrow();
-      } else {
-	depend_row = sr->get_backward_highrow();
-      }
-
-      if ( depend_row != -1 ) {
-	args->back->get_slicerow( depend_row )->wait_rendered();
+      int back_bot = sr->get_backward_lowrow();
+      int back_top = sr->get_backward_highrow();
+      
+      if ( back_bot != -1 ) {
+	for ( int depend_row = back_top; depend_row <= back_bot; depend_row++ ) {
+	  job->back->get_slicerow( depend_row )->wait_rendered();
+	}
       }
     }
 
@@ -476,16 +421,16 @@ void Picture::decoder_internal( picture_decoder_call_struct *args )
     while ( s != NULL ) {
       MapHandle *chunk = s->map_chunk();
 
-      args->decoder.bitstream_buf = 0;
-      args->decoder.bitstream_bits = 0;
-      args->decoder.bitstream_ptr = chunk->get_buf() + 4;
-      args->decoder.bit_ptr_end = chunk->get_buf() + chunk->get_len();
+      job->decoder->bitstream_buf = 0;
+      job->decoder->bitstream_bits = 0;
+      job->decoder->bitstream_ptr = chunk->get_buf() + 4;
+      job->decoder->bit_ptr_end = chunk->get_buf() + chunk->get_len();
 
-      s->decode( &args->decoder, s->get_val(), chunk->get_buf() + 4 );
+      s->decode( job->decoder, s->get_val(), chunk->get_buf() + 4 );
 
-      if ( args->decoder.invalid ) {
-	invalid = true; /* should be protected by mutex */
-	args->decoder.invalid = false;
+      if ( job->decoder->invalid ) {
+	invalid = true; /* XXX should be protected by mutex */
+	job->decoder->invalid = false;
       }
 
       delete chunk;
@@ -495,7 +440,12 @@ void Picture::decoder_internal( picture_decoder_call_struct *args )
 
     sr->set_rendered();
     row += increment;
-    //    usleep( 100000 );
+  }
+
+  {
+    MutexLock x( &decoding_mutex );
+    decoding--;
+    unixassert( pthread_cond_signal( &decoding_activity ) );
   }
 }
 

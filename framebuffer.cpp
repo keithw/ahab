@@ -1,5 +1,6 @@
 #include "framebuffer.hpp"
 #include "mutexobj.hpp"
+#include "picture.hpp"
 
 FrameQueue::FrameQueue( void )
 {

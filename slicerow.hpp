@@ -27,11 +27,12 @@ public:
 
   void init( int f_code_fv, int f_code_bv, Picture *forward, Picture *backward );
 
-  bool lock( void ) {
+  SliceRowState lock( void ) {
     MutexLock x( &mutex );
-    if ( state != SR_READY ) return false;
+    SliceRowState return_value = state;
+    if ( state != SR_READY ) return return_value;
     state = SR_LOCKED;
-    return true;
+    return return_value;
   }
 
   void set_rendered( void )

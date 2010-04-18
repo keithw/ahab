@@ -7,8 +7,8 @@
 
 static void *job_runner( void *s_threadq )
 {
-  OperationQueue<ReadyThread> *threadq = (OperationQueue<ReadyThread> *)s_threadq;
-  OperationQueue<DecoderJob> opq( 0 );
+  Queue<ReadyThread> *threadq = (Queue<ReadyThread> *)s_threadq;
+  Queue<DecoderJob> opq( 0 );
 
   ReadyThread me( pthread_self(), &opq );
 

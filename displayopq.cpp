@@ -1,3 +1,3 @@
 #include "displayopq.hpp"
 
-template class OperationQueue<DisplayOperation>;
+template class Queue<DisplayOperation>;

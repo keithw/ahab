@@ -17,7 +17,7 @@ public:
 };
 
 template <class T>
-class OperationQueue
+class Queue
 {
 private:
   uint num_ops;
@@ -29,11 +29,11 @@ private:
   int count, max_size;
   QueueElement<T> *head, *tail;
 
-  OperationQueue<T> *output;
+  Queue<T> *output;
 
 public:
-  OperationQueue( int s_max_size );
-  ~OperationQueue();
+  Queue( int s_max_size );
+  ~Queue();
   QueueElement<T> *enqueue( T *h );
   QueueElement<T> *leapfrog_enqueue( T *h, T *leapfrog_type );
   void remove_specific( QueueElement<T> *op );
@@ -45,7 +45,7 @@ public:
 
   int get_count( void ) { MutexLock x( &mutex ); return count; }
 
-  void hookup( OperationQueue<T> *s_output );
+  void hookup( Queue<T> *s_output );
 };
 
 #endif

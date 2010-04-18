@@ -20,7 +20,7 @@ private:
 
   Glib::Dispatcher *quit_signal;
 
-  OperationQueue<DecoderOperation> opq;
+  Queue<DecoderOperation> opq;
 
   int num_frames;
 
@@ -29,7 +29,7 @@ public:
   ~Controller();
 
   void loop( void );
-  OperationQueue<DecoderOperation> *get_queue() { return &opq; }
+  Queue<DecoderOperation> *get_queue() { return &opq; }
 };
 
 #endif

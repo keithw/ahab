@@ -1,3 +1,3 @@
 #include "readythreadq.hpp"
 
-template class OperationQueue<ReadyThread>;
+template class Queue<ReadyThread>;

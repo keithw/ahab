@@ -8,9 +8,9 @@
 class ReadyThread {
 public:
   pthread_t handle;
-  OperationQueue<DecoderJob> *opq;
+  Queue<DecoderJob> *opq;
 
-  ReadyThread( pthread_t s_handle, OperationQueue<DecoderJob> *s_opq )
+  ReadyThread( pthread_t s_handle, Queue<DecoderJob> *s_opq )
     : handle( s_handle ), opq( s_opq )
   {}
 };
@@ -19,7 +19,7 @@ class DecodeEngine {
 private:
   pthread_mutex_t mutex;
   int thread_count;
-  OperationQueue<ReadyThread> threadq;
+  Queue<ReadyThread> threadq;
 
 public:
   DecodeEngine()

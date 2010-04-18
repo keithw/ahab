@@ -17,7 +17,7 @@ static void *thread_helper( void *decoder )
 }
 
 Decoder::Decoder( ES *s_stream,
-		  OperationQueue<DisplayOperation> *s_oglq )
+		  Queue<DisplayOperation> *s_oglq )
   : opq( 0 ),
     stream( s_stream )
 {

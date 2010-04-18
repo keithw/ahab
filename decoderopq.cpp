@@ -1,3 +1,3 @@
 #include "decoderopq.hpp"
 
-template class OperationQueue<DecoderOperation>;
+template class Queue<DecoderOperation>;

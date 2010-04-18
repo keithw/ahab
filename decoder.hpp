@@ -18,13 +18,13 @@ public:
   bool fullscreen;
   bool live;
   OpenGLDisplay *display;
-  OperationQueue<DisplayOperation> *oglq;
+  Queue<DisplayOperation> *oglq;
 };
 
 class Decoder {
 private:
   DecoderState state;
-  OperationQueue<DecoderOperation> opq;
+  Queue<DecoderOperation> opq;
   pthread_t thread_handle;
   DecodeEngine engine;
 
@@ -33,11 +33,11 @@ private:
   void decode_and_display( void );
 
 public:
-  Decoder( ES *s_stream, OperationQueue<DisplayOperation> *s_oglq );
+  Decoder( ES *s_stream, Queue<DisplayOperation> *s_oglq );
   ~Decoder();
   
   void loop();
-  OperationQueue<DecoderOperation> *get_queue() { return &opq; }
+  Queue<DecoderOperation> *get_queue() { return &opq; }
   void wait_shutdown( void );
 };
 

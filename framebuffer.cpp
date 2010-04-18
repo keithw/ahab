@@ -1,71 +1,10 @@
 #include "framebuffer.hpp"
 #include "mutexobj.hpp"
 #include "picture.hpp"
-
-FrameQueue::FrameQueue( void )
-{
-  first = last = NULL;
-  unixassert( pthread_mutex_init( &mutex, NULL ) );
-}
-
-void FrameQueue::add( Frame *frame )
-{
-  MutexLock x( &mutex );
-
-  frame->prev = last;
-  frame->next = NULL;
-
-  if ( last ) {
-    last->next = frame;
-    last = frame;
-  } else {
-    first = last = frame;
-  }
-}
-
-Frame *FrameQueue::remove( void )
-{
-  MutexLock x( &mutex );
-
-  if ( first == NULL ) { /* empty */
-    return NULL;
-  }
-
-  Frame *return_value = first;
-
-  first = first->next;
-
-  if ( first ) {
-    first->prev = NULL;
-  } else {
-    last = NULL;
-  }
-
-  return_value->prev = return_value->next = NULL;
-
-  return return_value;
-}
-
-void FrameQueue::remove_specific( Frame *frame )
-{
-  MutexLock x( &mutex );
-
-  if ( frame->prev ) {
-    frame->prev->next = frame->next;
-  } else {
-    first = frame->next;
-  }
-
-  if ( frame->next ) {
-    frame->next->prev = frame->prev;
-  } else {
-    last = frame->prev;
-  }
-
-  frame->prev = frame->next = NULL;
-}
+#include "framequeue.hpp"
 
 BufferPool::BufferPool( uint s_num_frames, uint mb_width, uint mb_height )
+  : free( 0 ), freeable( 0 )
 {
   num_frames = s_num_frames;
   width = 16 * mb_width;
@@ -74,11 +13,10 @@ BufferPool::BufferPool( uint s_num_frames, uint mb_width, uint mb_height )
   frames = new Frame *[ num_frames ];
   for ( uint i = 0; i < num_frames; i++ ) {
     frames[ i ] = new Frame( mb_width, mb_height );
-    free.add( frames[ i ] );
+    free.enqueue( frames[ i ] );
   }
 
   unixassert( pthread_mutex_init( &mutex, NULL ) );
-  unixassert( pthread_cond_init( &new_freeable, NULL ) );
 }
 
 BufferPool::~BufferPool()
@@ -89,7 +27,6 @@ BufferPool::~BufferPool()
   }
   delete[] frames;
 
-  unixassert( pthread_cond_destroy( &new_freeable ) );
   unixassert( pthread_mutex_destroy( &mutex ) );
 }
 
@@ -247,16 +184,12 @@ Frame *BufferPool::get_free_frame( void )
 {
   MutexLock x( &mutex );
 
-  Frame *first_free = free.remove();
+  Frame *first_free = free.dequeue( false );
   if ( first_free ) {
     return first_free;
   }
 
-  Frame *first_freeable = freeable.remove();
-  if ( !first_freeable ) {
-    
-    throw OutOfFrames();
-  }
+  Frame *first_freeable = freeable.dequeue( true );
   first_freeable->free();
 
   return first_freeable;
@@ -265,19 +198,19 @@ Frame *BufferPool::get_free_frame( void )
 void BufferPool::make_freeable( Frame *frame )
 {
   MutexLock x( &mutex );
-  freeable.add( frame );
+  frame->set_element( freeable.enqueue( frame ) );
 }
 
 void BufferPool::make_free( Frame *frame )
 {
   MutexLock x( &mutex );
-  free.add( frame );
+  free.enqueue( frame );
 }
 
 void BufferPool::remove_from_freeable( Frame *frame )
 {
   MutexLock x( &mutex );
-  freeable.remove_specific( frame );
+  freeable.remove_specific( frame->get_element() );
 }
 
 void FrameHandle::set_frame( Frame *s_frame )

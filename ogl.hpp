@@ -51,7 +51,7 @@ class OpenGLDisplay {
 
 
   pthread_t thread_handle;
-  OperationQueue<DisplayOperation> opq;
+  Queue<DisplayOperation> opq;
 
  public:
   OpenGLDisplay( char *display_name, double movie_sar,
@@ -63,7 +63,7 @@ class OpenGLDisplay {
 
   void loop( void );
 
-  OperationQueue<DisplayOperation> *get_queue() { return &opq; }
+  Queue<DisplayOperation> *get_queue() { return &opq; }
 
   static void GLcheck( const char *where ) {
     GLenum GLerror;

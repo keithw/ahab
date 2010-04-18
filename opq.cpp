@@ -7,7 +7,7 @@
 #include <typeinfo>
 
 template <class T>
-OperationQueue<T>::OperationQueue( int s_max_size )
+Queue<T>::Queue( int s_max_size )
   : count( 0 ),
     max_size( s_max_size ),
     head( NULL ),
@@ -20,7 +20,7 @@ OperationQueue<T>::OperationQueue( int s_max_size )
 }
 
 template <class T>
-OperationQueue<T>::~OperationQueue()
+Queue<T>::~Queue()
 {
   {
     MutexLock x( &mutex );
@@ -43,7 +43,7 @@ OperationQueue<T>::~OperationQueue()
 }
 
 template <class T>
-QueueElement<T> *OperationQueue<T>::enqueue( T *h )
+QueueElement<T> *Queue<T>::enqueue( T *h )
 {
   MutexLock x( &mutex );
 
@@ -76,7 +76,7 @@ QueueElement<T> *OperationQueue<T>::enqueue( T *h )
 }
 
 template <class T>
-QueueElement<T> *OperationQueue<T>::leapfrog_enqueue( T *h,
+QueueElement<T> *Queue<T>::leapfrog_enqueue( T *h,
 						      T *leapfrog_type )
 {
   MutexLock x( &mutex );
@@ -121,7 +121,7 @@ QueueElement<T> *OperationQueue<T>::leapfrog_enqueue( T *h,
 }
 
 template <class T>
-void OperationQueue<T>::remove_specific( QueueElement<T> *op )
+void Queue<T>::remove_specific( QueueElement<T> *op )
 {
   MutexLock x( &mutex );
 
@@ -145,7 +145,7 @@ void OperationQueue<T>::remove_specific( QueueElement<T> *op )
 }
 
 template <class T>
-T *OperationQueue<T>::dequeue( bool wait )
+T *Queue<T>::dequeue( bool wait )
 {
   QueueElement<T> *ret_elem;
   T *ret;
@@ -178,7 +178,7 @@ T *OperationQueue<T>::dequeue( bool wait )
 }
 
 template <class T>
-void OperationQueue<T>::flush( void )
+void Queue<T>::flush( void )
 {
   MutexLock x( &mutex );
 
@@ -203,7 +203,7 @@ void OperationQueue<T>::flush( void )
 }
 
 template <class T>
-void OperationQueue<T>::flush_type( T *h )
+void Queue<T>::flush_type( T *h )
 {
   MutexLock x( &mutex );
   
@@ -248,7 +248,7 @@ void OperationQueue<T>::flush_type( T *h )
 }
 
 template <class T>
-void OperationQueue<T>::hookup( OperationQueue<T> *s_output )
+void Queue<T>::hookup( Queue<T> *s_output )
 {
   MutexLock x( &mutex );
 

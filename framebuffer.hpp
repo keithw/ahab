@@ -4,6 +4,7 @@
 #include "mpegheader.hpp"
 #include "exceptions.hpp"
 #include "slicerow.hpp"
+#include "opq.hpp"
 
 #include <stdint.h>
 #include <pthread.h>
@@ -39,32 +40,16 @@ public:
   void wait_rendered( void );
 };
 
-class FrameQueue
-{
-private:
-  Frame *first, *last;
-
-  pthread_mutex_t mutex;
-
-public:
-  FrameQueue( void );
-  void add( Frame *frame );
-  Frame *remove( void );
-  void remove_specific( Frame *frame );
-  ~FrameQueue() { unixassert( pthread_mutex_destroy( &mutex ) ); };
-};
-
 class BufferPool
 {
 private:
   uint num_frames, width, height;
   Frame **frames;
 
-  FrameQueue free;
-  FrameQueue freeable;
+  Queue<Frame> free;
+  Queue<Frame> freeable;
 
   pthread_mutex_t mutex;
-  pthread_cond_t new_freeable;
 
 public:
   BufferPool( uint s_num_frames, uint mb_width, uint mb_height );
@@ -81,8 +66,6 @@ enum FrameState { FREE, LOCKED, RENDERED, FREEABLE };
 
 class Frame
 {
-  friend class FrameQueue;
-
 private:
   uint width, height;
   uint8_t *buf;
@@ -96,6 +79,8 @@ private:
   pthread_cond_t activity;
 
   SliceRow **slicerow;
+
+  QueueElement<Frame> *queue_element;
 
 public:
   Frame( uint mb_width, uint mb_height );
@@ -120,6 +105,9 @@ public:
   void wait_rendered( void );
 
   SliceRow *get_slicerow( uint row ) { return slicerow[ row ]; }
+
+  void set_element( QueueElement<Frame> *s_element ) { queue_element = s_element; }
+  QueueElement<Frame> *get_element( void ) { return queue_element; }
 };
 
 #endif

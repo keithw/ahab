@@ -34,8 +34,9 @@ private:
 public:
   OperationQueue( int s_max_size );
   ~OperationQueue();
-  void enqueue( T *h );
-  void leapfrog_enqueue( T *h, T *leapfrog_type );
+  QueueElement<T> *enqueue( T *h );
+  QueueElement<T> *leapfrog_enqueue( T *h, T *leapfrog_type );
+  void remove_specific( QueueElement<T> *op );
 
   T *dequeue( bool wait );
 

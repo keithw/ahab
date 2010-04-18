@@ -14,7 +14,7 @@
 #include "framebuffer.hpp"
 #include "picture.hpp"
 
-const uint pool_slots = 50;
+const uint pool_slots = 4;
 
 ES::ES( File *s_file, void (*progress)( off_t size, off_t location ) )
 {

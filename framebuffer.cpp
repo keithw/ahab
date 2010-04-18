@@ -78,6 +78,7 @@ BufferPool::BufferPool( uint s_num_frames, uint mb_width, uint mb_height )
   }
 
   unixassert( pthread_mutex_init( &mutex, NULL ) );
+  unixassert( pthread_cond_init( &new_freeable, NULL ) );
 }
 
 BufferPool::~BufferPool()
@@ -88,6 +89,7 @@ BufferPool::~BufferPool()
   }
   delete[] frames;
 
+  unixassert( pthread_cond_destroy( &new_freeable ) );
   unixassert( pthread_mutex_destroy( &mutex ) );
 }
 
@@ -252,6 +254,7 @@ Frame *BufferPool::get_free_frame( void )
 
   Frame *first_freeable = freeable.remove();
   if ( !first_freeable ) {
+    
     throw OutOfFrames();
   }
   first_freeable->free();

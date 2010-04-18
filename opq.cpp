@@ -43,7 +43,7 @@ OperationQueue<T>::~OperationQueue()
 }
 
 template <class T>
-void OperationQueue<T>::enqueue( T *h )
+QueueElement<T> *OperationQueue<T>::enqueue( T *h )
 {
   MutexLock x( &mutex );
 
@@ -71,11 +71,13 @@ void OperationQueue<T>::enqueue( T *h )
   count++;
 
   unixassert( pthread_cond_signal( &write_activity ) );
+
+  return op;
 }
 
 template <class T>
-void OperationQueue<T>::leapfrog_enqueue( T *h,
-					  T *leapfrog_type )
+QueueElement<T> *OperationQueue<T>::leapfrog_enqueue( T *h,
+						      T *leapfrog_type )
 {
   MutexLock x( &mutex );
 
@@ -114,6 +116,32 @@ void OperationQueue<T>::leapfrog_enqueue( T *h,
   count++;
 
   unixassert( pthread_cond_signal( &write_activity ) );
+
+  return op;
+}
+
+template <class T>
+void OperationQueue<T>::remove_specific( QueueElement<T> *op )
+{
+  MutexLock x( &mutex );
+
+  ahabassert( count > 0 );
+
+  if ( op->prev ) {
+    op->prev->next = op->next;
+  } else {
+    head = op->next;
+  }
+
+  if ( op->next ) {
+    op->next->prev = op->prev;
+  } else {
+    tail = op->prev;
+  }
+
+  delete op; 
+  count--;
+  unixassert( pthread_cond_signal( &read_activity ) );  
 }
 
 template <class T>
@@ -136,7 +164,7 @@ T *OperationQueue<T>::dequeue( bool wait )
   if ( tail ) {
     tail->next = NULL;
   } else {
-    assert( count == 1 );
+    ahabassert( count == 1 );
     head = NULL;
   }
 

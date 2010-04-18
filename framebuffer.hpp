@@ -64,6 +64,7 @@ private:
   FrameQueue freeable;
 
   pthread_mutex_t mutex;
+  pthread_cond_t new_freeable;
 
 public:
   BufferPool( uint s_num_frames, uint mb_width, uint mb_height );

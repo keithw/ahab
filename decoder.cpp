@@ -36,6 +36,7 @@ void Decoder::decode_and_display( void )
   Picture *pic = stream->get_picture_displayed( state.current_picture );
   pic->start_parallel_decode( &engine, true );
   pic->get_framehandle()->wait_rendered();
+  //  pic->lock_and_decodeall();
   DrawAndUnlockFrame *op = new DrawAndUnlockFrame( pic->get_framehandle() );
   state.oglq->flush_type( op );
   state.oglq->enqueue( op );  

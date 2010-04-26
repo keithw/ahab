@@ -39,7 +39,7 @@ void Decoder::decode_and_display( void )
   //  pic->lock_and_decodeall();
   DrawAndUnlockFrame *op = new DrawAndUnlockFrame( pic->get_framehandle() );
   state.oglq->flush_type( op );
-  state.oglq->enqueue( op );  
+  state.oglq->enqueue( op );
 }
 
 void Decoder::loop( void )

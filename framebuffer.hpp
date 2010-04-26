@@ -22,7 +22,6 @@ private:
   Frame *frame;
   int locks;
 
-  pthread_mutex_t mutex;
   pthread_cond_t activity;
 
   void set_frame( Frame *s_frame );
@@ -31,8 +30,10 @@ public:
   void increment_lockcount( void );
   void decrement_lockcount( void );
 
+  bool increment_lockcount_if_renderable( void );
+
   Frame *get_frame( void ) { ahabassert( frame ); return frame; }
-  Picture *get_picture( void ) { return pic; }
+  Picture *get_picture( void ) { ahabassert( pic ); return pic; }
 
   FrameHandle( BufferPool *s_pool, Picture *s_pic );
   ~FrameHandle();
@@ -50,6 +51,7 @@ private:
   Queue<Frame> freeable;
 
   pthread_mutex_t mutex;
+  pthread_cond_t activity;
 
 public:
   BufferPool( uint s_num_frames, uint mb_width, uint mb_height );
@@ -60,6 +62,22 @@ public:
   void make_freeable( Frame *frame );
   void make_free( Frame *frame );
   void remove_from_freeable( Frame *frame );
+
+  pthread_mutex_t *get_mutex( void ) { return &mutex; }
+
+  void print_status( void )
+  {
+    fprintf( stderr, "free: %d, freeable: %d\n",
+	     free.get_count(), freeable.get_count() );
+  }
+
+  void signal( void ) {
+    unixassert( pthread_cond_broadcast( &activity ) );
+  }
+
+  void wait( void ) {
+    unixassert( pthread_cond_wait( &activity, &mutex ) );
+  }
 };
 
 enum FrameState { FREE, LOCKED, RENDERED, FREEABLE };
@@ -67,6 +85,8 @@ enum FrameState { FREE, LOCKED, RENDERED, FREEABLE };
 class Frame
 {
 private:
+  BufferPool *pool;
+
   uint width, height;
   uint8_t *buf;
   FrameState state;
@@ -75,7 +95,6 @@ private:
 
   Frame *prev, *next;
 
-  pthread_mutex_t mutex;
   pthread_cond_t activity;
 
   SliceRow **slicerow;
@@ -83,7 +102,7 @@ private:
   QueueElement<Frame> *queue_element;
 
 public:
-  Frame( uint mb_width, uint mb_height );
+  Frame( BufferPool *s_pool, uint mb_width, uint mb_height );
   ~Frame();
 
   uint8_t *get_buf( void ) { return buf; }

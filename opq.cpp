@@ -5,6 +5,7 @@
 #include "mutexobj.hpp"
 
 #include <typeinfo>
+#include <stdio.h>
 
 template <class T>
 Queue<T>::Queue( int s_max_size )
@@ -206,7 +207,7 @@ template <class T>
 void Queue<T>::flush_type( T *h )
 {
   MutexLock x( &mutex );
-  
+
   if ( output ) {
     ahabassert( !head );
     ahabassert( !tail );

@@ -269,10 +269,7 @@ void Picture::setup_decoder( mpeg2_decoder_t *d, uint8_t *current_fbuf[3],
 void Picture::start_parallel_decode( DecodeEngine *engine, bool leave_locked )
 {
   /* First, see if the picture is already rendered */
-  fh->increment_lockcount();
-
-  if ( fh->get_frame()
-       && fh->get_frame()->get_state() == RENDERED ) {
+  if ( fh->increment_lockcount_if_renderable() ) {
     if ( !leave_locked ) {
       fh->decrement_lockcount();
     }
@@ -283,17 +280,14 @@ void Picture::start_parallel_decode( DecodeEngine *engine, bool leave_locked )
   {
     MutexLock x( &decoding_mutex );
     if ( decoding > 0 ) {
-      if ( !leave_locked ) {
-	fh->decrement_lockcount();
+      if ( leave_locked ) {
+	fh->increment_lockcount();
       }
       return;
     } else {
       decoding++;
     }
   }
-
-  /* Ok, we have to render it. Temporarily unlock us to free up space */
-  fh->decrement_lockcount();
 
   /* Lock and start decoding pre-requisites */
   if ( forward_reference ) {
@@ -352,15 +346,10 @@ void Picture::decoder_cleanup_internal( bool leave_locked )
   {
     MutexLock x( &decoding_mutex );
     ahabassert( decoding > 0 );
+
     while ( decoding != 1 ) {
       unixassert( pthread_cond_wait( &decoding_activity, &decoding_mutex ) );
     }
-    fh->get_frame()->set_rendered();
-    decoding = 0;
-  }
-
-  if ( !leave_locked ) {
-    fh->decrement_lockcount();
   }
 
   if ( forward_reference ) {
@@ -370,6 +359,17 @@ void Picture::decoder_cleanup_internal( bool leave_locked )
   if ( backward_reference ) {
     backward_reference->get_framehandle()->wait_rendered();
     backward_reference->get_framehandle()->decrement_lockcount();
+  }
+
+  fh->get_frame()->set_rendered();
+
+  if ( !leave_locked ) {
+    fh->decrement_lockcount();
+  }
+
+  {
+    MutexLock x( &decoding_mutex );
+    decoding = 0;
   }
 }
 
@@ -472,7 +472,7 @@ void Picture::decoder_internal( DecodeSlices *job )
   {
     MutexLock x( &decoding_mutex );
     decoding--;
-    unixassert( pthread_cond_signal( &decoding_activity ) );
+    unixassert( pthread_cond_broadcast( &decoding_activity ) );
   }
 }
 

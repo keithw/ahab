@@ -79,8 +79,8 @@ int main( int argc, char *argv[] )
 
   try {
     delete xevents;
-    delete decoder;
     delete controller;
+    delete decoder;
     delete display;
     delete stream;
     delete file;

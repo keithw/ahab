@@ -17,16 +17,28 @@ BufferPool::BufferPool( uint s_num_frames, uint mb_width, uint mb_height )
   }
 
   unixassert( pthread_mutex_init( &mutex, NULL ) );
+  unixassert( pthread_cond_init( &activity, NULL ) );
 }
 
 BufferPool::~BufferPool()
 {
+  Frame *frame;
+
+  do {
+    frame = free.dequeue( false );
+  } while ( frame );
+
+  do {
+    frame = freeable.dequeue( false );
+  } while ( frame );
+
   for ( uint i = 0; i < num_frames; i++ ) {
-    Frame *frame = frames[ i ];
+    frame = frames[ i ];
     delete frame;
   }
   delete[] frames;
 
+  unixassert( pthread_cond_destroy( &activity ) );
   unixassert( pthread_mutex_destroy( &mutex ) );
 }
 

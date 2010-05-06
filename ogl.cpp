@@ -356,27 +356,14 @@ void OpenGLDisplay::makeevent( void )
   XFlush( state.display );
 }
 
-char OpenGLDisplay::getevent( bool block )
+bool OpenGLDisplay::getevent( bool block, XEvent *ev )
 {
-  XEvent               myevent;
-  XExposeEvent        *myexpose = (XExposeEvent *)&myevent;
-  XKeyEvent           *mykey    = (XKeyEvent *)&myevent;
-
   if ( block || XPending( state.display ) ) {
-    XNextEvent( state.display, &myevent );
-
-    if ( myevent.type == Expose && myexpose->count == 0 ) {
-      return '@';
-    } else if ( myevent.type == KeyPress ) {
-      char key;
-      KeySym keysym;
-      if ( XLookupString( mykey, &key, 1, &keysym, NULL ) == 1 ) {
-	return key;
-      }
-    }
+    XNextEvent( state.display, ev );
+    return true;
+  } else {
+    return false;
   }
-
-  return 0;
 }
 
 void OpcodeState::load_matrix_coefficients( double green[ 3 ],

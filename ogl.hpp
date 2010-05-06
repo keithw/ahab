@@ -58,7 +58,7 @@ class OpenGLDisplay {
 		 uint s_framewidth, uint s_frameheight,
 		 uint s_dispwidth, uint s_dispheight );
   ~OpenGLDisplay();
-  char getevent( bool block );
+  bool getevent( bool block, XEvent *ev );
   void makeevent( void );
 
   void loop( void );

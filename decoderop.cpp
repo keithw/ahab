@@ -6,12 +6,6 @@
 void XKey::execute( DecoderState &state )
 {
   switch ( key ) {
-  case '@':
-    {
-      Repaint *op = new Repaint();
-      state.oglq->enqueue( op );
-    }
-    break;
   case 'f':
     state.fullscreen = !state.fullscreen;
     {
@@ -21,6 +15,15 @@ void XKey::execute( DecoderState &state )
     break;
   case 'q':
     state.live = false;
+    break;
+  case XK_Left:
+    state.current_picture--;
+    break;
+  case XK_Right:
+    state.current_picture++;
+    break;
+  default:
+    fprintf( stderr, "key %d hit\n", key );
     break;
   }
 }

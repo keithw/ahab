@@ -4,6 +4,7 @@
 class DecoderOperation;
 class DecoderState;
 
+#include <X11/Xlib.h>
 #include "decoder.hpp"
 
 class DecoderOperation {
@@ -24,10 +25,10 @@ public:
 
 class XKey : public DecoderOperation {
 private:
-  int key;
+  KeySym key;
 
 public:
-  XKey( int s_key ) : key( s_key ) {}
+  XKey( KeySym s_key ) : key( s_key ) {}
   ~XKey() {}
   void execute ( DecoderState &state );
 };

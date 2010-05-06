@@ -6,7 +6,9 @@
 
 class XEventLoop {
 private:
-  Queue<DecoderOperation> opq;
+  Queue<DecoderOperation> keys;
+  Queue<DisplayOperation> repaints;
+
   OpenGLDisplay *display;
 
   pthread_t thread_handle;
@@ -19,7 +21,8 @@ public:
   ~XEventLoop();
 
   void loop( void );
-  Queue<DecoderOperation> *get_queue() { return &opq; }
+  Queue<DecoderOperation> *get_key_queue() { return &keys; }
+  Queue<DisplayOperation> *get_repaint_queue() { return &repaints; }
 };
 
 #endif

@@ -69,7 +69,8 @@ int main( int argc, char *argv[] )
   xevents = new XEventLoop( display );
 
   controller->get_queue()->hookup( decoder->get_queue() );
-  xevents->get_queue()->hookup( decoder->get_queue() );
+  xevents->get_key_queue()->hookup( decoder->get_queue() );
+  xevents->get_repaint_queue()->hookup( display->get_queue() );
 
   try {
     decoder->wait_shutdown();

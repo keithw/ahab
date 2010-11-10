@@ -11,6 +11,7 @@ class DisplayOperation;
 
 #include "opq.hpp"
 #include "decodeengine.hpp"
+#include "controllerop.hpp"
 
 class DecoderState {
 public:
@@ -19,6 +20,7 @@ public:
   bool live;
   OpenGLDisplay *display;
   Queue<DisplayOperation> *oglq;
+  Queue<ControllerOperation> outputq;
 };
 
 class Decoder {
@@ -38,6 +40,7 @@ public:
   
   void loop();
   Queue<DecoderOperation> *get_queue() { return &opq; }
+  Queue<ControllerOperation> *get_output_queue() { return &state.outputq; }
   void wait_shutdown( void );
 };
 

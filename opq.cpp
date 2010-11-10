@@ -1,3 +1,6 @@
+#ifndef OPQ_CPP
+#define OPQ_CPP
+
 #include <pthread.h>
 
 #include "opq.hpp"
@@ -13,11 +16,21 @@ Queue<T>::Queue( int s_max_size )
     max_size( s_max_size ),
     head( NULL ),
     tail( NULL ),
-    output( NULL )
+    output( NULL ),
+    enqueue_callback( NULL )
 {
   unixassert( pthread_mutex_init( &mutex, NULL ) );
   unixassert( pthread_cond_init( &write_activity, NULL ) );
   unixassert( pthread_cond_init( &read_activity, NULL ) );
+}
+
+template <class T>
+void Queue<T>::set_enqueue_callback( void (*s_enqueue_callback)(void *obj),
+				     void *s_obj)
+{
+  MutexLock x( &mutex );
+  enqueue_callback = s_enqueue_callback;
+  obj = s_obj;
 }
 
 template <class T>
@@ -73,6 +86,10 @@ QueueElement<T> *Queue<T>::enqueue( T *h )
 
   unixassert( pthread_cond_signal( &write_activity ) );
 
+  if ( enqueue_callback ) {
+    (*enqueue_callback)(obj);
+  }
+
   return op;
 }
 
@@ -117,6 +134,10 @@ QueueElement<T> *Queue<T>::leapfrog_enqueue( T *h,
   count++;
 
   unixassert( pthread_cond_signal( &write_activity ) );
+
+  if ( enqueue_callback ) {
+    (*enqueue_callback)(obj);
+  }
 
   return op;
 }
@@ -273,3 +294,5 @@ void Queue<T>::hookup( Queue<T> *s_output )
   head = tail = NULL;
   count = 0;
 }
+
+#endif

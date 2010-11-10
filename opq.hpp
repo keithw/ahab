@@ -31,9 +31,14 @@ private:
 
   Queue<T> *output;
 
+  void (*enqueue_callback)(void *obj);
+  void *obj;
+
 public:
   Queue( int s_max_size );
+  Queue() { Queue( 0 ); }
   ~Queue();
+
   QueueElement<T> *enqueue( T *h );
   QueueElement<T> *leapfrog_enqueue( T *h, T *leapfrog_type );
   void remove_specific( QueueElement<T> *op );
@@ -46,6 +51,9 @@ public:
   int get_count( void ) { MutexLock x( &mutex ); return count; }
 
   void hookup( Queue<T> *s_output );
+
+  void set_enqueue_callback( void (*s_enqueue_callback)(void *obj),
+			     void *s_obj );
 };
 
 #endif

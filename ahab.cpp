@@ -9,8 +9,6 @@
 #include "file.hpp"
 #include "es.hpp"
 #include "ogl.hpp"
-#include "framebuffer.hpp"
-#include "colorimetry.hpp"
 #include "decoder.hpp"
 #include "xeventloop.hpp"
 
@@ -71,6 +69,8 @@ int main( int argc, char *argv[] )
   controller->get_queue()->hookup( decoder->get_queue() );
   xevents->get_key_queue()->hookup( decoder->get_queue() );
   xevents->get_repaint_queue()->hookup( display->get_queue() );
+
+  decoder->get_output_queue()->hookup( controller->get_input_queue() );
 
   try {
     decoder->wait_shutdown();

@@ -5,22 +5,31 @@
 #include <pthread.h>
 
 #include "decoderop.hpp"
+#include "controllerop.hpp"
+
+class ControllerState {
+public:
+  Glib::Dispatcher *move_slider;
+  Gtk::HScale *scale;
+};
 
 class Controller {
 private:
   Gtk::Main *main;
   Gtk::Window *window;
-  Gtk::HScale *scale;
 
   pthread_mutex_t mutex;
   pthread_t thread_handle;
 
   bool on_changed_value( Gtk::ScrollType scroll, double new_value );
   void shutdown( void ) { main->quit(); }
+  void move( void );
 
   Glib::Dispatcher *quit_signal;
+  ControllerState state;
 
   Queue<DecoderOperation> opq;
+  Queue<ControllerOperation> inputq;
 
   int num_frames;
 
@@ -30,6 +39,9 @@ public:
 
   void loop( void );
   Queue<DecoderOperation> *get_queue() { return &opq; }
+  Queue<ControllerOperation> *get_input_queue() { return &inputq; }
+
+  void tick_move_slider( void );
 };
 
 #endif

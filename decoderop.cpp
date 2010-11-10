@@ -18,9 +18,13 @@ void XKey::execute( DecoderState &state )
     break;
   case XK_Left:
     state.current_picture--;
+    state.outputq.flush();
+    state.outputq.enqueue( new MoveSlider( state.current_picture ) );
     break;
   case XK_Right:
     state.current_picture++;
+    state.outputq.flush();
+    state.outputq.enqueue( new MoveSlider( state.current_picture ) );
     break;
   default:
     fprintf( stderr, "key %d hit\n", key );

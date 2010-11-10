@@ -1,5 +1,5 @@
-source = ahab.cpp es.cpp mpegheader.cpp bitreader.cpp startfinder.cpp sequence.cpp extensions.cpp exceptions.cpp picture.cpp slice.cpp file.cpp ogl.cpp slicedecode.cpp idct_mmx.cpp motion_comp_mmx.cpp framebuffer.cpp opq.cpp displayop.cpp controller.cpp displayopq.cpp decoder.cpp decoderop.cpp decoderopq.cpp xeventloop.cpp slicerow.cpp benchmark.cpp decodeengine.cpp readythreadq.cpp decoderjobq.cpp framequeue.cpp
-objects = es.o mpegheader.o bitreader.o startfinder.o sequence.o extensions.o exceptions.o picture.o slice.o file.o ogl.o slicedecode.o idct_mmx.o motion_comp_mmx.o framebuffer.o opq.o displayop.o controller.o displayopq.o decoder.o decoderop.o decoderopq.o xeventloop.o slicerow.o decodeengine.o readythreadq.o decoderjobq.o framequeue.o
+source = ahab.cpp benchmark.cpp bitreader.cpp controller.cpp decodeengine.cpp decoder.cpp decoderop.cpp displayop.cpp es.cpp exceptions.cpp extensions.cpp file.cpp framebuffer.cpp idct_mmx.cpp motion_comp_mmx.cpp mpegheader.cpp ogl.cpp opq.cpp picture.cpp queue_templates.cpp sequence.cpp slice.cpp slicedecode.cpp slicerow.cpp startfinder.cpp xeventloop.cpp controllerop.cpp
+objects = bitreader.o controller.o decodeengine.o decoder.o decoderop.o displayop.o es.o exceptions.o extensions.o file.o framebuffer.o idct_mmx.o motion_comp_mmx.o mpegheader.o ogl.o opq.o picture.o queue_templates.o sequence.o slice.o slicedecode.o slicerow.o startfinder.o xeventloop.o controllerop.o
 executables = ahab benchmark
 
 CPP = g++

@@ -3,7 +3,7 @@ objects = bitreader.o controller.o decodeengine.o decoder.o decoderop.o displayo
 executables = ahab benchmark parsebench
 
 CPP = g++
-CPPFLAGS = -g -O3 -Wall -fno-implicit-templates -pipe -pthread -D_FILE_OFFSET_BITS=64 -D_XOPEN_SOURCE=500 -DGL_GLEXT_PROTOTYPES -DGLX_GLXEXT_PROTOTYPES `pkg-config gtkmm-2.4 --cflags`
+CPPFLAGS = -g -O3 -std=c++0x -pedantic -Werror -Wall -fno-implicit-templates -pipe -pthread -D_FILE_OFFSET_BITS=64 -D_XOPEN_SOURCE=500 -DGL_GLEXT_PROTOTYPES -DGLX_GLXEXT_PROTOTYPES `pkg-config gtkmm-2.4 --cflags`
 LIBS = -lX11 -lGL -lGLU `pkg-config gtkmm-2.4 --libs`
 
 all: $(executables)

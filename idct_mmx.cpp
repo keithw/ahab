@@ -484,10 +484,10 @@ static inline void idct_col (int16_t * col, int offset)
 #endif
 
 
-#define T1 13036
-#define T2 27146
-#define T3 43790
-#define C4 23170
+#define T1 ((short)13036)
+#define T2 ((short)27146)
+#define T3 ((short)43790)
+#define C4 ((short)23170)
 
 
 /* SSE2 column IDCT */

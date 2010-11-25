@@ -27,7 +27,7 @@ void XKey::execute( DecoderState &state )
     state.outputq.enqueue( new MoveSlider( state.current_picture ) );
     break;
   default:
-    fprintf( stderr, "key %d hit\n", key );
+    fprintf( stderr, "key %d hit\n", (int)key );
     break;
   }
 }

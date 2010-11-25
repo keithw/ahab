@@ -116,7 +116,7 @@ void Sequence::link( void )
   /* Find my extension */
   SequenceExtension *se = dynamic_cast<SequenceExtension *>( get_next() );
   if ( se == NULL ) {
-    fprintf( stderr, "Sequence extension not found at %lld.\n", get_location() );
+    fprintf( stderr, "Sequence extension not found at %ld.\n", (long)get_location() );
     throw MPEGInvalid();
   }
   extension = se;

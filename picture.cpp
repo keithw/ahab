@@ -87,7 +87,7 @@ void Picture::link( void )
   /* Find my extension */
   PictureCodingExtension *pe = dynamic_cast<PictureCodingExtension *>( get_next() );
   if ( pe == NULL ) {
-    fprintf( stderr, "Picture coding extension not found at %lld.\n", get_location() );
+    fprintf( stderr, "Picture coding extension not found at %ld.\n", (long)get_location() );
     throw MPEGInvalid();
   }
   extension = pe;
@@ -566,7 +566,7 @@ void Picture::init_fh( BufferPool *pool )
 
 void Picture::register_slice_extent( off_t start, off_t end )
 {
-  if ( slices_start == NULL ) {
+  if ( !slices_start ) {
     slices_start = start;
     slices_end = end;
     return;

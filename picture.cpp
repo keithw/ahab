@@ -24,8 +24,9 @@
 extern const uint8_t mpeg2_scan_norm[ 64 ]; /* These are the MMX versions */
 extern const uint8_t mpeg2_scan_alt[ 64 ];
 
-Picture::Picture( BitReader &hdr ) {
+Picture::Picture( BitReader &hdr, File *s_file ) {
   init();
+  file = s_file;
   sequence = NULL;
   extension = NULL;
   first_slice_in_row = NULL;
@@ -38,6 +39,7 @@ Picture::Picture( BitReader &hdr ) {
   fh = NULL;
   decoding = 0;
   invalid = false;
+  slices_start = slices_end = NULL;
 
   unixassert( pthread_mutex_init( &decoding_mutex, NULL ) );
   unixassert( pthread_cond_init( &decoding_activity, NULL ) );
@@ -411,6 +413,8 @@ void Picture::decoder_internal( DecodeSlices *job )
     }
   }
 
+  MapHandle *chunk = file->map( slices_start, slices_end - slices_start );
+
   while ( 0 <= row && row < rows ) {
     SliceRow *sr = job->cur->get_slicerow( row );
     SliceRowState previous_state = sr->lock();
@@ -446,21 +450,19 @@ void Picture::decoder_internal( DecodeSlices *job )
 
     Slice *s = get_first_slice_in_row( row );
     while ( s != NULL ) {
-      MapHandle *chunk = s->map_chunk();
+      off_t slice_offset = s->get_location() - slices_start;
 
       job->decoder->bitstream_buf = 0;
       job->decoder->bitstream_bits = 0;
-      job->decoder->bitstream_ptr = chunk->get_buf() + 4;
-      job->decoder->bit_ptr_end = chunk->get_buf() + chunk->get_len();
+      job->decoder->bitstream_ptr = chunk->get_buf() + slice_offset + 4;
+      job->decoder->bit_ptr_end = chunk->get_buf() + slice_offset + s->get_len();
 
-      s->decode( job->decoder, s->get_val(), chunk->get_buf() + 4 );
+      s->decode( job->decoder, s->get_val(), chunk->get_buf() + slice_offset + 4 );
 
       if ( job->decoder->invalid ) {
 	invalid = true; /* XXX should be protected by mutex */
 	job->decoder->invalid = false;
       }
-
-      delete chunk;
 
       s = s->get_next_in_row();
     }
@@ -468,6 +470,8 @@ void Picture::decoder_internal( DecodeSlices *job )
     sr->set_rendered();
     row += increment;
   }
+
+  delete chunk;
 
   {
     MutexLock x( &decoding_mutex );
@@ -558,4 +562,21 @@ void Picture::lock_and_decodeall( void )
 void Picture::init_fh( BufferPool *pool )
 {
   fh = pool->make_handle( this );
+}
+
+void Picture::register_slice_extent( off_t start, off_t end )
+{
+  if ( slices_start == NULL ) {
+    slices_start = start;
+    slices_end = end;
+    return;
+  }
+
+  if ( start < slices_start ) {
+    slices_start = start;
+  }
+
+  if ( end > slices_end ) {
+    slices_end = end;
+  }
 }

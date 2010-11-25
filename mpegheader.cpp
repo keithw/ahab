@@ -29,7 +29,7 @@ MPEGHeader *MPEGHeader::make( BitReader &hdr, File *file )
 
   switch ( val ) {
   case 0x00:
-    return new Picture( hdr );
+    return new Picture( hdr, file );
     break;
 
   case 0xB0:

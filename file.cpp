@@ -39,13 +39,15 @@ File::~File()
 
 MapHandle *File::map( off_t offset, size_t len )
 {
+  fprintf( stderr, "mmapping %lld for %d\n", offset, len );
+
   long page = sysconf( _SC_PAGE_SIZE );
 
   off_t mmap_offset = offset & ~(page - 1);
 
   uint8_t *mbuf = (uint8_t *)mmap( NULL, len + offset - mmap_offset,
 				   PROT_READ,
-				   MAP_SHARED, fd, mmap_offset );
+				   MAP_PRIVATE, fd, mmap_offset );
   if ( mbuf == MAP_FAILED ) {
     perror( "mmap" );
     throw UnixError( errno );
@@ -58,6 +60,8 @@ MapHandle *File::map( off_t offset, size_t len )
 
 MapHandle::~MapHandle()
 {
+  fprintf( stderr, "unmapping for %d\n", userlen );
+
   if ( munmap( mmap_buf, maplen ) < 0 ) {
     perror( "munmap" );
     throw UnixError( errno );

@@ -4,6 +4,7 @@
 
 #include "mpegheader.hpp"
 #include "file.hpp"
+#include "picture.hpp"
 
 Slice::Slice( uint s_val, File *s_file ) {
   init();
@@ -32,6 +33,9 @@ void Slice::link( void )
       next_slice_in_row = ts;
     }
   }
+
+  ahabassert( picture );
+  picture->register_slice_extent( get_location(), get_location() + len );
 }
 
 void Slice::print_info( void ) {

@@ -13,6 +13,8 @@ class DecodeEngine;
 class Picture : public MPEGHeader
 {
 private:
+  File *file;
+
   int coded_order, display_order;
   PictureType type;
 
@@ -49,6 +51,8 @@ private:
   pthread_mutex_t decoding_mutex;
   pthread_cond_t decoding_activity;
   int decoding;
+
+  off_t slices_start, slices_end;
 
 public:
   int get_coded( void ) { return coded_order; }
@@ -121,7 +125,7 @@ public:
 
   FrameHandle *get_framehandle( void ) { return fh; }
 
-  Picture( BitReader &hdr );
+  Picture( BitReader &hdr, File *s_file );
   ~Picture();
 
   void init_fh( BufferPool *pool );
@@ -133,7 +137,7 @@ public:
   void start_parallel_decode( DecodeEngine *engine, bool leave_locked );
   void decoder_internal( DecodeSlices *job );
   void decoder_cleanup_internal( bool leave_locked );
-
+  void register_slice_extent( off_t start, off_t end );
 };
 
 #endif

@@ -39,8 +39,6 @@ File::~File()
 
 MapHandle *File::map( off_t offset, size_t len )
 {
-  fprintf( stderr, "mmapping %lld for %d\n", offset, len );
-
   long page = sysconf( _SC_PAGE_SIZE );
 
   off_t mmap_offset = offset & ~(page - 1);
@@ -60,8 +58,6 @@ MapHandle *File::map( off_t offset, size_t len )
 
 MapHandle::~MapHandle()
 {
-  fprintf( stderr, "unmapping for %d\n", userlen );
-
   if ( munmap( mmap_buf, maplen ) < 0 ) {
     perror( "munmap" );
     throw UnixError( errno );

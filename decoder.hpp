@@ -21,6 +21,8 @@ public:
   OpenGLDisplay *display;
   Queue<DisplayOperation> *oglq;
   Queue<ControllerOperation> outputq;
+
+  bool playing;
 };
 
 class Decoder {

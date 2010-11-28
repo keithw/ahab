@@ -25,6 +25,7 @@ Decoder::Decoder( ES *s_stream,
   state.fullscreen = false;
   state.live = true;
   state.oglq = s_oglq;
+  state.playing = false;
 
   pthread_create( &thread_handle, NULL, thread_helper, this );
 }
@@ -60,9 +61,17 @@ void Decoder::loop( void )
 
     picture_displayed = state.current_picture;
 
-    DecoderOperation *op = opq.dequeue( true );
-    op->execute( state );
-    delete op;
+    DecoderOperation *op = opq.dequeue( !state.playing );
+    if ( op ) {
+      op->execute( state );
+      delete op;
+    } else if ( state.playing ) {
+      state.current_picture++;
+      /*
+      state.outputq.flush();
+      state.outputq.enqueue( new MoveSlider( state.current_picture ) );
+      */
+    }
   }
 }
 

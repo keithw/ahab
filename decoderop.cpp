@@ -6,6 +6,9 @@
 void XKey::execute( DecoderState &state )
 {
   switch ( key ) {
+  case ' ':
+    state.playing = !state.playing;
+    break;
   case 'f':
     state.fullscreen = !state.fullscreen;
     {

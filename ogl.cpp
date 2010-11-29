@@ -85,6 +85,12 @@ OpenGLDisplay::OpenGLDisplay( char *display_name,
   fprintf( stderr, "Video SAR in display pixel units = %.3f:1. Display size = %dx%d.\n",
 	   state.sar, state.width, state.height );
 
+  state.GetSync = (Bool (*)(Display*, GLXDrawable, int64_t*, int64_t*, int64_t*))glXGetProcAddress( (GLubyte *) "glXGetSyncValuesOML" );
+
+  ahabassert( state.GetSync );
+
+  state.last_mbc = -1;
+
   pthread_create( &thread_handle, NULL,
 		  thread_helper, this );
 }
@@ -256,6 +262,18 @@ void OpcodeState::paint( void )
   glXSwapBuffers( display, window );
 
   OpenGLDisplay::GLcheck( "glXSwapBuffers" );
+
+  /* Check if we stuttered */
+  
+  int64_t ust, mbc, sbc;
+  GetSync( display, window, &ust, &mbc, &sbc );
+
+  if ( (last_mbc != -1) && (mbc != last_mbc + 1) ) {
+    long int diff = mbc - last_mbc;
+    fprintf( stderr, "Skipped %ld retraces.\n", diff );
+  }
+
+  last_mbc = mbc;
 }
 
 typedef struct

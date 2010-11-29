@@ -37,6 +37,9 @@ public:
 				 double blue[ 3 ],
 				 double red[ 3 ] );
   GLuint Y_tex, Cb_tex, Cr_tex;
+
+  Bool (*GetSync)(Display*, GLXDrawable, int64_t*, int64_t*, int64_t*);
+  int64_t last_mbc;
 };
 
 class OpenGLDisplay {

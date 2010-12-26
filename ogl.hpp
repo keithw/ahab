@@ -40,6 +40,7 @@ public:
 
   Bool (*GetSync)(Display*, GLXDrawable, int64_t*, int64_t*, int64_t*);
   int64_t last_mbc;
+  int64_t last_us;
 };
 
 class OpenGLDisplay {

@@ -19,7 +19,7 @@
 
 #include "displayopq.hpp"
 
-const int opqueue_len = 6;
+const int opqueue_len = 8;
 
 static void *thread_helper( void *ogl )
 {
@@ -90,9 +90,19 @@ OpenGLDisplay::OpenGLDisplay( char *display_name,
   ahabassert( state.GetSync );
 
   state.last_mbc = -1;
+  state.last_us = -1;
 
-  pthread_create( &thread_handle, NULL,
-		  thread_helper, this );
+  unixassert( pthread_create( &thread_handle, NULL,
+			      thread_helper, this ) );
+
+  int prio = sched_get_priority_max( SCHED_FIFO );
+  ahabassert( prio != -1 );
+
+  struct sched_param params;
+  params.sched_priority = prio;
+
+  unixassert( pthread_setschedparam( thread_handle,
+				     SCHED_FIFO, &params ) );
 }
 
 void OpenGLDisplay::init_context( void ) {
@@ -263,9 +273,17 @@ void OpcodeState::paint( void )
 
   OpenGLDisplay::GLcheck( "glXSwapBuffers" );
 
-  /* Check if we stuttered */
-  
-  int64_t ust, mbc, sbc;
+  glFinish();
+
+  /* Check if we stuttered */  
+
+  int64_t ust, mbc, sbc, us;
+  struct timeval now;
+
+  gettimeofday( &now, NULL );
+  us = 1000000 * now.tv_sec + now.tv_usec;
+  long us_diff = us - last_us;
+
   GetSync( display, window, &ust, &mbc, &sbc );
 
   if ( (last_mbc != -1) && (mbc != last_mbc + 1) ) {
@@ -273,7 +291,12 @@ void OpcodeState::paint( void )
     fprintf( stderr, "Skipped %ld retraces.\n", diff );
   }
 
+  if ( (last_us != -1) && ( (us_diff < 8000) || (us_diff > 24000) ) ) {
+    fprintf( stderr, "Time diff was %ld us.\n", (long)us_diff );
+  }
+
   last_mbc = mbc;
+  last_us = us;
 }
 
 typedef struct
@@ -424,11 +447,6 @@ void OpenGLDisplay::loop( void )
 {
   state.window_setup();
   XMapRaised( state.display, state.window );
-
-  /*
-  XEvent event;
-  XNextEvent( state.display, &event );
-  */
 
   init_context();
   state.reset_viewport();

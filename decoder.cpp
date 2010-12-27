@@ -67,10 +67,8 @@ void Decoder::loop( void )
       delete op;
     } else if ( state.playing ) {
       state.current_picture++;
-      /*
       state.outputq.flush();
       state.outputq.enqueue( new MoveSlider( state.current_picture ) );
-      */
     }
   }
 }

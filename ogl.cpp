@@ -286,13 +286,21 @@ void OpcodeState::paint( void )
 
   GetSync( display, window, &ust, &mbc, &sbc );
 
+  bool msg = false;
+
   if ( (last_mbc != -1) && (mbc != last_mbc + 1) ) {
     long int diff = mbc - last_mbc;
-    fprintf( stderr, "Skipped %ld retraces.\n", diff );
+    fprintf( stderr, "[Skipped %ld retraces.]", diff );
+    msg = true;
   }
 
   if ( (last_us != -1) && ( (us_diff < 8000) || (us_diff > 24000) ) ) {
-    fprintf( stderr, "Time diff was %ld us.\n", (long)us_diff );
+    fprintf( stderr, "%s[Time diff was %ld us.]", msg ? " " : "", (long)us_diff );
+    msg = true;
+  }
+
+  if ( msg ) {
+    fprintf( stderr, "\n" );
   }
 
   last_mbc = mbc;

@@ -23,6 +23,8 @@ public:
   Queue<ControllerOperation> outputq;
 
   bool playing;
+
+  DecoderState() : outputq( 0 ) {}
 };
 
 class Decoder {

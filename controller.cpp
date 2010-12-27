@@ -97,7 +97,7 @@ void Controller::loop( void )
   delete main;
 }
 
-bool Controller::on_changed_value( Gtk::ScrollType scroll, double new_value )
+bool Controller::on_changed_value( Gtk::ScrollType, double new_value )
 {
   int cur_frame = lround( new_value );
 

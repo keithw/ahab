@@ -16,6 +16,7 @@ class DecoderJob
 {
 public:
   virtual void execute( void ) = 0;
+  virtual ~DecoderJob() {}
 };
 
 class DecodeSlices : public DecoderJob

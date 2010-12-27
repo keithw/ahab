@@ -85,7 +85,7 @@ off_t ES::startfinder( off_t start,
   return last_code;
 }
 
-bool ES::first_sequence( uint8_t *buf, off_t location, size_t len )
+bool ES::first_sequence( uint8_t *buf, off_t, size_t len )
 {
   return (BitReader( buf, len ).readbits( 32 ) != 0x1b3);
 }

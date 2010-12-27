@@ -171,7 +171,7 @@ public:
 class SequenceEnd : public MPEGHeader
 {
 public:
-  SequenceEnd( BitReader &hdr ) { init(); }
+  SequenceEnd( BitReader & ) { init(); }
   virtual void print_info( void ) { printf( "sequence end\n" ); }
   virtual void link( void ) {}
 };
@@ -179,7 +179,7 @@ public:
 class OtherExtension : public MPEGHeader
 {
 public:
-  OtherExtension( BitReader &hdr ) { init(); }
+  OtherExtension( BitReader & ) { init(); }
   virtual void print_info( void ) { printf( "other extension\n" ); }
   virtual void link( void ) {}
 };
@@ -187,7 +187,7 @@ public:
 class ReservedHeader : public MPEGHeader
 {
 public:
-  ReservedHeader( BitReader &hdr ) { init(); }
+  ReservedHeader( BitReader & ) { init(); }
   virtual void print_info( void ) { printf( "reserved header\n" ); }
   virtual void link( void ) {}
 };
@@ -195,7 +195,7 @@ public:
 class UserData : public MPEGHeader
 {
 public:
-  UserData( BitReader &hdr ) { init(); }
+  UserData( BitReader & ) { init(); }
   virtual void print_info( void ) { printf( "user data\n" ); }
   virtual void link( void ) {}
 };
@@ -203,7 +203,7 @@ public:
 class SequenceError : public MPEGHeader
 {
 public:
-  SequenceError( BitReader &hdr ) { init(); }
+  SequenceError( BitReader & ) { init(); }
   virtual void print_info( void ) { printf( "sequence error\n" ); }
   virtual void link( void ) {}
 };
@@ -211,7 +211,7 @@ public:
 class Group : public MPEGHeader
 {
 public:
-  Group( BitReader &hdr ) { init(); }
+  Group( BitReader & ) { init(); }
   virtual void print_info( void ) { printf( "group\n" ); }
   virtual void link( void ) {}
 };

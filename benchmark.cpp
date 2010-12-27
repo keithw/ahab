@@ -12,7 +12,7 @@
 #include "picture.hpp"
 #include "decodeengine.hpp"
 
-void progress_bar( off_t size, off_t location ) {}
+void progress_bar( off_t, off_t ) {}
 
 int main( int argc, char *argv[] )
 {

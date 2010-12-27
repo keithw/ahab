@@ -14,7 +14,7 @@ void LoadMatrixCoefficients::execute( OpcodeState &state )
   state.load_matrix_coefficients( green, blue, red );
 }
 
-void ShutDown::execute( OpcodeState &state )
+void ShutDown::execute( OpcodeState & )
 {
   pthread_exit( NULL );
 }

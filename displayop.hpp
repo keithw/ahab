@@ -74,7 +74,7 @@ class NullOperation : public DisplayOperation {
 public:
   NullOperation( void ) {}
   ~NullOperation( void ) {}
-  void execute( OpcodeState &state ) {}
+  void execute( OpcodeState & ) {}
 };
 
 #endif

@@ -152,8 +152,8 @@ void ES::number_pictures( void )
 
       tp->init_fh( pool );
 
-      ahabassert( (this_coded >= 0) && (this_coded < num_pictures) );
-      ahabassert( (this_display >= 0) && (this_coded < num_pictures) );
+      ahabassert( this_coded < num_pictures );
+      ahabassert( this_coded < num_pictures );
 
       coded_picture[ this_coded ] = tp;
       displayed_picture[ this_display ] = tp;

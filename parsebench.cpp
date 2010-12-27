@@ -1,19 +1,22 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+#include <assert.h>
 
 #include "libmpeg2.h"
 
 #include "file.hpp"
 #include "es.hpp"
 
-void progress_bar( off_t size, off_t location ) {}
+void progress_bar( off_t, off_t ) {}
 
 int main( int argc, char *argv[] )
 {
   struct timespec start, finish;
 
   unixassert( clock_gettime( CLOCK_REALTIME, &start ) );
+
+  assert( argc == 2 );
 
   File *file = new File( argv[ 1 ] );
   ES *stream = new ES( file, &progress_bar );

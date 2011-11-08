@@ -10,7 +10,9 @@
 class ControllerState {
 public:
   Glib::Dispatcher *move_slider;
+  Gtk::VBox *grid;
   Gtk::HScale *scale;
+  Gtk::CheckButton *fs_button;
 };
 
 class Controller {
@@ -21,6 +23,7 @@ private:
   pthread_mutex_t mutex;
   pthread_t thread_handle;
 
+  void on_button( void );
   bool on_changed_value( Gtk::ScrollType scroll, double new_value );
   void shutdown( void ) { main->quit(); }
   void move( void );

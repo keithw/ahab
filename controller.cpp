@@ -57,11 +57,20 @@ void Controller::loop( void )
     quit_signal = new Glib::Dispatcher;
     state.move_slider = new Glib::Dispatcher;
 
-    window->set_default_size( 600, 50 );
+    window->set_default_size( 800, 50 );
     window->set_title( "Ahab Controller" );
 
+    state.grid = new Gtk::VBox();
+    window->add( *state.grid );
+    state.grid->set_homogeneous( false );
+
+    state.fs_button = new Gtk::CheckButton( "fullscreen" );
+
+    state.grid->add( *state.fs_button );
+    state.fs_button->signal_toggled().connect( sigc::mem_fun( this, &Controller::on_button ) );
+
     state.scale = new Gtk::HScale( 0, num_frames, 1 );
-    window->add( *state.scale );
+    state.grid->add( *state.scale );
 
     state.scale->set_update_policy( Gtk::UPDATE_CONTINUOUS );
     state.scale->set_digits( 0 );
@@ -75,6 +84,8 @@ void Controller::loop( void )
 
     inputq.set_enqueue_callback( tick_move_slider_helper, this );
 
+    state.grid->show();
+    state.fs_button->show();
     state.scale->show();
   }
 
@@ -92,9 +103,16 @@ void Controller::loop( void )
     opq.enqueue( op );
   } catch ( UnixAssertError *e ) {}
 
+  delete state.fs_button;
   delete state.scale;
+  delete state.grid;
   delete window;
   delete main;
+}
+
+void Controller::on_button( void )
+{
+  opq.enqueue( new XKey( 'f' ) );
 }
 
 bool Controller::on_changed_value( Gtk::ScrollType, double new_value )

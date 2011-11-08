@@ -17,7 +17,8 @@ static void *thread_helper( void *decoder )
 }
 
 Decoder::Decoder( ES *s_stream,
-		  Queue<DisplayOperation> *s_oglq )
+		  Queue<DisplayOperation> *s_oglq,
+		  Queue<DisplayOperation> *s_oglq2 )
   : opq( 0 ),
     stream( s_stream )
 {
@@ -25,6 +26,7 @@ Decoder::Decoder( ES *s_stream,
   state.fullscreen = false;
   state.live = true;
   state.oglq = s_oglq;
+  state.oglq2 = s_oglq2;
   state.playing = false;
 
   pthread_create( &thread_handle, NULL, thread_helper, this );
@@ -36,10 +38,26 @@ void Decoder::decode_and_display( void )
 {
   Picture *pic = stream->get_picture_displayed( state.current_picture );
   pic->start_parallel_decode( &engine, true );
+
+  /* Show next picture */
+  Picture *pic2;
+  if ( state.current_picture < 60 ) {
+    pic2 = stream->get_picture_displayed( state.current_picture + 1 );
+    pic2->start_parallel_decode( &engine, true );
+    pic2->get_framehandle()->wait_rendered();
+  }
+
   pic->get_framehandle()->wait_rendered();
+
   DrawAndUnlockFrame *op = new DrawAndUnlockFrame( pic->get_framehandle() );
   state.oglq->flush_type( op );
   state.oglq->enqueue( op );
+
+  if ( state.current_picture < 60 ) {
+    DrawAndUnlockFrame *op2 = new DrawAndUnlockFrame( pic2->get_framehandle() );
+    state.oglq2->flush_type( op2 );
+    state.oglq2->enqueue( op2 );
+  }
 }
 
 void Decoder::loop( void )

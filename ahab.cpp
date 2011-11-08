@@ -21,7 +21,7 @@ int main( int argc, char *argv[] )
   File *file;
   ES *stream;
   Sequence *seq;
-  OpenGLDisplay *display;
+  OpenGLDisplay *display, *display2;
   Controller *controller;
   Decoder *decoder;
 
@@ -53,14 +53,22 @@ int main( int argc, char *argv[] )
 			       16 * seq->get_mb_width(),
 			       16 * seq->get_mb_height(),
 			       seq->get_horizontal_size(),
-			       seq->get_vertical_size() );
+			       seq->get_vertical_size(),
+			       1 );
+
+  display2 = new OpenGLDisplay( (char *)NULL, seq->get_sar(),
+				16 * seq->get_mb_width(),
+				16 * seq->get_mb_height(),
+				640,
+				480,
+				.5 );
 
   fprintf( stderr, "Pictures: %d, duration: %.3f seconds.\n",
 	   stream->get_num_pictures(), stream->get_duration() );
 
   controller = new Controller( stream->get_num_pictures() );
 
-  decoder = new Decoder( stream, display->get_queue() );
+  decoder = new Decoder( stream, display->get_queue(), display2->get_queue() );
 
   controller->get_queue()->hookup( decoder->get_queue() );
 

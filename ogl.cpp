@@ -32,13 +32,15 @@ static void *thread_helper( void *ogl )
 OpenGLDisplay::OpenGLDisplay( char *display_name,
 			      double movie_sar,
 			      uint s_framewidth, uint s_frameheight,
-			      uint s_dispwidth, uint s_dispheight )
+			      uint s_dispwidth, uint s_dispheight,
+			      double s_factor )
   : opq( opqueue_len )
 {
   state.framewidth = s_framewidth;
   state.frameheight = s_frameheight;
   state.dispwidth = s_dispwidth;
   state.dispheight = s_dispheight;
+  state.factor = s_factor;
   
   if ( 0 == XInitThreads() ) {
     fprintf( stderr, "XInitThreads() failed." );
@@ -245,24 +247,27 @@ void OpcodeState::paint( void )
   const double ff = 1.0/128; /* Mesa fudge factor */
   const double xoffset = 0.25; /* MPEG-2 style 4:2:0 subsampling */
 
+  double mwidth = width / factor;
+  double mheight = height/factor;
+
   glMultiTexCoord2d( GL_TEXTURE0, ff, ff );
   glMultiTexCoord2d( GL_TEXTURE1, xoffset+ff, ff );
   glMultiTexCoord2d( GL_TEXTURE2, xoffset+ff, ff );
   glVertex2s( 0, 0 );
 
-  glMultiTexCoord2d( GL_TEXTURE0, dispwidth+ff, ff );
-  glMultiTexCoord2d( GL_TEXTURE1, dispwidth/2 + xoffset + ff, ff );
-  glMultiTexCoord2d( GL_TEXTURE2, dispwidth/2 + xoffset + ff, ff );
+  glMultiTexCoord2d( GL_TEXTURE0, mwidth+ff, ff );
+  glMultiTexCoord2d( GL_TEXTURE1, mwidth/2 + xoffset + ff, ff );
+  glMultiTexCoord2d( GL_TEXTURE2, mwidth/2 + xoffset + ff, ff );
   glVertex2s( width, 0 );
 
-  glMultiTexCoord2d( GL_TEXTURE0, dispwidth+ff, dispheight+ff );
-  glMultiTexCoord2d( GL_TEXTURE1, dispwidth/2 + xoffset + ff, dispheight/2 + ff);
-  glMultiTexCoord2d( GL_TEXTURE2, dispwidth/2 + xoffset + ff, dispheight/2 + ff);
+  glMultiTexCoord2d( GL_TEXTURE0, mwidth+ff, mheight+ff );
+  glMultiTexCoord2d( GL_TEXTURE1, mwidth/2 + xoffset + ff, mheight/2 + ff);
+  glMultiTexCoord2d( GL_TEXTURE2, mwidth/2 + xoffset + ff, mheight/2 + ff);
   glVertex2s( width, height);
 
-  glMultiTexCoord2d( GL_TEXTURE0, ff, dispheight+ff );
-  glMultiTexCoord2d( GL_TEXTURE1, xoffset+ff, dispheight/2 + ff );
-  glMultiTexCoord2d( GL_TEXTURE2, xoffset+ff, dispheight/2 + ff );
+  glMultiTexCoord2d( GL_TEXTURE0, ff, mheight+ff );
+  glMultiTexCoord2d( GL_TEXTURE1, xoffset+ff, mheight/2 + ff );
+  glMultiTexCoord2d( GL_TEXTURE2, xoffset+ff, mheight/2 + ff );
   glVertex2s( 0, height);
 
   glEnd();
@@ -277,6 +282,7 @@ void OpcodeState::paint( void )
 
   /* Check if we stuttered */  
 
+  /*
   int64_t ust, mbc, sbc, us;
   struct timeval now;
 
@@ -305,6 +311,7 @@ void OpcodeState::paint( void )
 
   last_mbc = mbc;
   last_us = us;
+  */
 }
 
 typedef struct

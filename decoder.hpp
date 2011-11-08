@@ -20,6 +20,7 @@ public:
   bool live;
   OpenGLDisplay *display;
   Queue<DisplayOperation> *oglq;
+  Queue<DisplayOperation> *oglq2;
   Queue<ControllerOperation> outputq;
 
   bool playing;
@@ -39,7 +40,7 @@ private:
   void decode_and_display( void );
 
 public:
-  Decoder( ES *s_stream, Queue<DisplayOperation> *s_oglq );
+  Decoder( ES *s_stream, Queue<DisplayOperation> *s_oglq, Queue<DisplayOperation> *s_oglq2 );
   ~Decoder();
   
   void loop();

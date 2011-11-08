@@ -24,6 +24,7 @@ public:
   uint framewidth, frameheight; /* luma matrix dimensions */
   uint dispwidth, dispheight; /* MPEG-2 intended display size */
   double sar;
+  double factor;
 
   void draw( uint8_t *ycbcr );
   void paint( void );
@@ -60,7 +61,8 @@ class OpenGLDisplay {
  public:
   OpenGLDisplay( char *display_name, double movie_sar,
 		 uint s_framewidth, uint s_frameheight,
-		 uint s_dispwidth, uint s_dispheight );
+		 uint s_dispwidth, uint s_dispheight,
+		 double s_factor );
   ~OpenGLDisplay();
   bool getevent( bool block, XEvent *ev );
   void makeevent( void );

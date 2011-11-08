@@ -463,5 +463,14 @@ void OpenGLDisplay::loop( void )
     DisplayOperation *op = opq.dequeue( true );
     op->execute( state );
     delete op;
+
+    XEvent ev;
+    XExposeEvent *expose = (XExposeEvent *)&ev;
+
+    while ( getevent( false, &ev ) ) {
+      if ( ev.type == Expose && expose->count == 0 ) {
+	state.paint();
+      }
+    }
   }
 }

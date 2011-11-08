@@ -10,7 +10,6 @@
 #include "es.hpp"
 #include "ogl.hpp"
 #include "decoder.hpp"
-#include "xeventloop.hpp"
 
 #include <sys/time.h>
 #include <math.h>
@@ -25,7 +24,6 @@ int main( int argc, char *argv[] )
   OpenGLDisplay *display;
   Controller *controller;
   Decoder *decoder;
-  XEventLoop *xevents;
 
   if ( argc != 2 ) {
     fprintf( stderr, "USAGE: %s FILENAME\n", argv[ 0 ] );
@@ -64,11 +62,7 @@ int main( int argc, char *argv[] )
 
   decoder = new Decoder( stream, display->get_queue() );
 
-  xevents = new XEventLoop( display );
-
   controller->get_queue()->hookup( decoder->get_queue() );
-  xevents->get_key_queue()->hookup( decoder->get_queue() );
-  xevents->get_repaint_queue()->hookup( display->get_queue() );
 
   decoder->get_output_queue()->hookup( controller->get_input_queue() );
 
@@ -79,7 +73,6 @@ int main( int argc, char *argv[] )
   }
 
   try {
-    delete xevents;
     delete controller;
     delete decoder;
     delete display;

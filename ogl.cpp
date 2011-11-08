@@ -349,13 +349,22 @@ void OpcodeState::dofullscreen( void )
   XFreeCursor( display, thecursor );
   XFreePixmap( display, thepixmap );
 
+  /* Get width and height */
+  Window root_return;
+  int x_return, y_return;
+  unsigned int bwidth, bheight;
+  XGetGeometry( display, window, &root_return, &x_return, &y_return, &width, &height, &bwidth, &bheight );
+
   /* adjust width and height of displayed image */
+  /*
   width = DisplayWidth( display, DefaultScreen( display ) );
   height = lrint( (double)dispheight * (double)width / ((double)dispwidth * sar) );
+  */
 
   if ( (signed)height > DisplayHeight( display, DefaultScreen( display ) ) ) {
     height = DisplayHeight( display, DefaultScreen( display ) );
     width = lrint( (double)dispwidth * (double) sar * (double)height / (double)dispheight );
+    fprintf( stderr, "Adjusting to %d x %d\n", width, height );
   }
 
   reset_viewport();

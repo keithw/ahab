@@ -39,7 +39,7 @@ Picture::Picture( BitReader &hdr, File *s_file ) {
   fh = NULL;
   decoding = 0;
   invalid = false;
-  slices_start = slices_end = NULL;
+  slices_start = slices_end = 0;
 
   unixassert( pthread_mutex_init( &decoding_mutex, NULL ) );
   unixassert( pthread_cond_init( &decoding_activity, NULL ) );
@@ -191,6 +191,18 @@ void Picture::print_info( void ) {
     printf( "%d, ", non_intra_quantiser_matrix[ i ] );
   }
   printf( "};\n" );
+
+  /* calculate length */
+  uint rows = get_sequence()->get_mb_height();
+  int len = 0;
+  for ( uint row = 0; row < rows; row++ ) {
+    Slice *s = get_first_slice_in_row( row );
+    while ( s != NULL ) {
+      len += s->get_len();
+      s = s->get_next_in_row();
+    }
+  }
+  printf( "Length: %d bytes (%d bits)\n", len, len * 8 );
 }
 
 void Picture::setup_decoder( mpeg2_decoder_t *d, uint8_t *current_fbuf[3],

@@ -85,9 +85,9 @@ OpenGLDisplay::OpenGLDisplay( char *display_name,
   fprintf( stderr, "Video SAR in display pixel units = %.3f:1. Display size = %dx%d.\n",
 	   state.sar, state.width, state.height );
 
-  state.GetSync = (Bool (*)(Display*, GLXDrawable, int64_t*, int64_t*, int64_t*))glXGetProcAddress( (GLubyte *) "glXGetSyncValuesOML" );
+  //  state.GetSync = (Bool (*)(Display*, GLXDrawable, int64_t*, int64_t*, int64_t*))glXGetProcAddress( (GLubyte *) "glXGetSyncValuesOML" );
 
-  ahabassert( state.GetSync );
+  //  ahabassert( state.GetSync );
 
   state.last_mbc = -1;
   state.last_us = -1;
@@ -284,10 +284,11 @@ void OpcodeState::paint( void )
   us = 1000000 * now.tv_sec + now.tv_usec;
   long us_diff = us - last_us;
 
-  GetSync( display, window, &ust, &mbc, &sbc );
+  //  GetSync( display, window, &ust, &mbc, &sbc );
 
   bool msg = false;
 
+  /*
   if ( (last_mbc != -1) && (mbc != last_mbc + 1) ) {
     long int diff = mbc - last_mbc;
     fprintf( stderr, "[Skipped %ld retraces.]", diff );
@@ -302,6 +303,7 @@ void OpcodeState::paint( void )
   if ( msg ) {
     fprintf( stderr, "\n" );
   }
+  */
 
   last_mbc = mbc;
   last_us = us;
